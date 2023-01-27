@@ -34,21 +34,25 @@ class ThumbStack(object):
          self.filterTypes = np.array(['ring'])
       elif filterTypes=='cosdisk':
          self.filterTypes = np.array(['cosdisk'])
+      elif filterTypes=='taudisk':
+         self.filterTypes = np.array(['taudisk'])
       elif filterTypes=='all':
-         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk'])
+         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk', 'taudisk'])
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
+      # CHECK: how are we handling cmbHit in the sim? Also, is the below how to do this?
+      # How to set whether an estimator uses these attributes?
       if self.cmbHit is not None:
          self.Est = ['tsz_uniformweight', 'tsz_varweight']   #['tsz_uniformweight', 'tsz_hitweight', 'tsz_varweight', 'ksz_uniformweight', 'ksz_hitweight', 'ksz_varweight', 'ksz_massvarweight']
          self.EstBootstrap = ['tsz_uniformweight', 'tsz_varweight']  #['tsz_varweight', 'ksz_varweight']
          self.EstVShuffle = []   #['ksz_varweight']
          self.EstMBins = ['tsz_uniformweight', 'tsz_varweight']# ['tsz_varweight', 'ksz_varweight']
       else:
-         self.Est = ['tsz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
-         self.EstBootstrap = ['tsz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
+         self.Est = ['tau_ti_uniformweight','tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
+         self.EstBootstrap = ['tau_ti_uniformweight','tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
          self.EstVShuffle = []   #['ksz_uniformweight']
-         self.EstMBins = ['tsz_uniformweight'] #['ksz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
+         self.EstMBins = [] #['ksz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
 
       # resolution of the cutout maps to be extracted
       self.resCutoutArcmin = 0.25   # [arcmin]
@@ -109,7 +113,7 @@ class ThumbStack(object):
          self.computeAllSnr()
 
       #if save:
-      if True:
+      if False:
          if doStackedMap:
             # save all stacked maps
             # self.saveAllStackedMaps()
@@ -386,7 +390,7 @@ class ThumbStack(object):
          filterW = inDisk - inRing
          if np.isnan(np.sum(filterW)):
             print("filterW sums to nan", r0, r1, np.sum(radius), np.sum(1.*(radius>r0)), np.sum(1.*(radius>r0)*(radius<=r1)))
-      elif filterType=='disk':
+      elif (filterType=='disk') or (filterType=='taudisk'):
          # disk filter [dimensionless]
          inDisk = 1.*(radius<=r0)
          filterW = inDisk
@@ -406,11 +410,16 @@ class ThumbStack(object):
       # apply the filter: int_disk d^2theta map -  disk_area / ring_area * int_ring d^2theta map
       filtMap = np.sum(pixArea * filterW * stampMap)   # [map unit * sr]
       # quantify noise std dev in the filter
-      if self.cmbHit is not None:
+
+      if filterType=='taudisk':
+         # get large scale mean temp over largest disk that fits in the stamp
+         big_r =  np.floor(self.rApMaxArcmin * np.sqrt(2.))
+         inBigDisk =  1.*(radius<=big_r)
+         filtHitNoiseStdDev = np.sum(pixArea * inBigDisk * stampMap)
+      elif self.cmbHit is not None:
          filtHitNoiseStdDev = np.sqrt(np.sum((pixArea * filterW)**2 / (1.e-16 + stampHit))) # to get the std devs [sr / sqrt(hit unit)]
       else:
          filtHitNoiseStdDev = 0.
-      
 
       #print "filtHitNoiseStdDev = ", filtHitNoiseStdDev
       if np.isnan(filtHitNoiseStdDev):
@@ -887,6 +896,7 @@ class ThumbStack(object):
       # valid whether or not a hit count map is available
       s2Full = ts.filtVarTrue[filterType][mask, :]
       # Variance from hit count (if available)
+      sHit = ts.filtHitNoiseStdDev[filterType][mask, :]
       s2Hit = ts.filtHitNoiseStdDev[filterType][mask, :]**2
       #print "Shape of s2Hit = ", s2Hit.shape
       # halo masses
@@ -967,8 +977,17 @@ class ThumbStack(object):
          weights = m[:,np.newaxis] * v[:,np.newaxis] / s2Full
          #norm = np.mean(m) * sVTrue / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
          norm = np.mean(m) * np.std(v) / ts.Catalog.rV / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
+      # CHECK: is this where to do this???
+      # tau: "weighted" by mean large scale temperature
+      elif est=='tau_ti_uniformweight':
+         weights = -sHit
+         norm = 1./np.sum(sHit**2, axis=0)
+      # tau: "weighted" by sign of large scale temperature
+      elif est=='tau_sgn_uniformweight':
+         weights = -np.sign(sHit)
+         norm = 1./np.sum(np.abs(sHit), axis=0)
 
-      #tStop = time()
+   #tStop = time()
       #print "stacked profile took", tStop-tStart, "sec"
 
 
