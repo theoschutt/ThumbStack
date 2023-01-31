@@ -113,7 +113,7 @@ class ThumbStack(object):
          self.computeAllSnr()
 
       #if save:
-      if False:
+      if False: #skipping for now for tau estimator dev
          if doStackedMap:
             # save all stacked maps
             # self.saveAllStackedMaps()
@@ -895,8 +895,9 @@ class ThumbStack(object):
       #true filter variance for each object and aperture,
       # valid whether or not a hit count map is available
       s2Full = ts.filtVarTrue[filterType][mask, :]
+      # large-scale temperature for tau estimator
+      Tlarge = ts.filtHitNoiseStdDev[filterType][mask, :]
       # Variance from hit count (if available)
-      sHit = ts.filtHitNoiseStdDev[filterType][mask, :]
       s2Hit = ts.filtHitNoiseStdDev[filterType][mask, :]**2
       #print "Shape of s2Hit = ", s2Hit.shape
       # halo masses
@@ -980,12 +981,12 @@ class ThumbStack(object):
       # CHECK: is this where to do this???
       # tau: "weighted" by mean large scale temperature
       elif est=='tau_ti_uniformweight':
-         weights = -sHit
-         norm = 1./np.sum(sHit**2, axis=0)
+         weights = -Tlarge
+         norm = 1./np.sum(Tlarge**2, axis=0)
       # tau: "weighted" by sign of large scale temperature
       elif est=='tau_sgn_uniformweight':
-         weights = -np.sign(sHit)
-         norm = 1./np.sum(np.abs(sHit), axis=0)
+         weights = -np.sign(Tlarge)
+         norm = 1./np.sum(np.abs(Tlarge), axis=0)
 
    #tStop = time()
       #print "stacked profile took", tStop-tStart, "sec"
