@@ -36,8 +36,10 @@ class ThumbStack(object):
          self.filterTypes = np.array(['cosdisk'])
       elif filterTypes=='taudisk':
          self.filterTypes = np.array(['taudisk'])
+      elif filterTypes=='taudiskring':
+         self.filterTypes = np.array(['taudiskring'])
       elif filterTypes=='all':
-         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk', 'taudisk'])
+         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk', 'taudisk', 'taudiskring'])
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
@@ -383,7 +385,7 @@ class ThumbStack(object):
       # ring filter [dimensionless]
       inRing = 1.*(radius>r0)*(radius<=r1)
 
-      if filterType=='diskring':
+      if (filterType=='diskring') or (filterType=='taudiskring'):
          # normalize the ring so that the disk-ring filter integrates exactly to zero
          inRing *= np.sum(inDisk) / np.sum(inRing)
          # disk minus ring filter [dimensionless]
@@ -411,7 +413,7 @@ class ThumbStack(object):
       filtMap = np.sum(pixArea * filterW * stampMap)   # [map unit * sr]
       # quantify noise std dev in the filter
 
-      if filterType=='taudisk':
+      if (filterType=='taudisk') or (filtertype=='taudiskring'):
          # get large scale mean temp over largest disk that fits in the stamp
          big_r =  np.floor(self.rApMaxArcmin * np.sqrt(2.))
          inBigDisk =  1.*(radius<=big_r)
