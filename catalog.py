@@ -1053,7 +1053,6 @@ class Catalog(object):
       pixSizeMap = countDirac.pixsizemap()
       # get map of ra and dec, just to check
       posmap = countDirac.posmap()
-
       for iObj in range(self.nObj):
 #      for iObj in range(10):
          if iObj%100000==0:

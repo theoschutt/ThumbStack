@@ -717,8 +717,8 @@ class ThumbStack(object):
                newY = np.array(list(map(fVarFromHitCount[iRAp], newX)))
                ax.plot(newX, newY*(180.*60./np.pi)**2, label=r'interpolated')
                #
-               ax.set_xscale('log', nonposx='clip')
-               ax.set_yscale('log', nonposy='clip')
+               ax.set_xscale('log', nonpositive='clip')
+               ax.set_yscale('log', nonpositive='clip')
                ax.set_xlabel(r'Det. noise var. from combined hit [arbitrary]')
                ax.set_ylabel(r'Measured var. [$\mu$K.arcmin$^2$]')
                #
@@ -1800,8 +1800,8 @@ class ThumbStack(object):
             ax.set_xlim((xMin, xMax))
             ax.set_ylim((1.e-3, 10.))
             ax.legend(loc=2, fontsize='x-small', labelspacing=0.1)
-            ax.set_xscale('log', nonposx='clip')
-            ax.set_yscale('log', nonposy='clip')
+            ax.set_xscale('log', nonpositive='clip')
+            ax.set_yscale('log', nonpositive='clip')
             ax.set_xlabel(r'$M_\text{vir max}$ [$M_\odot$]')
             ax.set_ylabel(r'Fraction of expected kSZ')
             #
@@ -1834,8 +1834,8 @@ class ThumbStack(object):
             ax.set_xlim((self.MMax[1], self.MMax.max()))
             ax.set_ylim((1.e-3, 10.))
             ax.legend(loc=2, fontsize='x-small', labelspacing=0.1)
-            ax.set_xscale('log', nonposx='clip')
-            ax.set_yscale('log', nonposy='clip')
+            ax.set_xscale('log', nonpositive='clip')
+            ax.set_yscale('log', nonpositive='clip')
             ax.set_xlabel(r'$M_\text{vir max}$ [$M_\odot$]')
             ax.set_ylabel(r'Fraction of expected tSZ')
             #

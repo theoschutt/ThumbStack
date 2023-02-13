@@ -222,9 +222,9 @@ def my2dHistogram(X, Y, nBins=(71, 71), limx=None, limy=None, limc=None, fTheory
    #
    plt.colorbar(im)
    if logx:
-      ax.set_xscale('log', nonposx='clip')
+      ax.set_xscale('log', nonpositive='clip')
    if logy:
-      ax.set_yscale('log', nonposy='clip')
+      ax.set_yscale('log', nonpositive='clip')
    ax.set_xlim((limx[0], limx[1]))
    ax.set_ylim((limy[0], limy[1]))
    ax.set_xlabel(nameLatexX)
