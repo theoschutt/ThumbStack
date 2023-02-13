@@ -413,7 +413,7 @@ class ThumbStack(object):
       filtMap = np.sum(pixArea * filterW * stampMap)   # [map unit * sr]
       # quantify noise std dev in the filter
 
-      if (filterType=='taudisk') or (filtertype=='taudiskring'):
+      if (filterType=='taudisk') or (filterType=='taudiskring'):
          # get large scale mean temp over largest disk that fits in the stamp
          big_r =  np.floor(self.rApMaxArcmin * np.sqrt(2.))
          inBigDisk =  1.*(radius<=big_r)
