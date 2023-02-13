@@ -26,8 +26,8 @@ class FlatMap(object):
       self.data = np.zeros((nX,nY))
    
       lx = np.zeros(nX)
-      lx[:nX/2+1] = 2.*np.pi/sizeX * np.arange(nX//2+1)
-      lx[nX/2+1:] = 2.*np.pi/sizeX * np.arange(-nX//2+1, 0, 1)
+      lx[:nX//2+1] = 2.*np.pi/sizeX * np.arange(nX//2+1)
+      lx[nX//2+1:] = 2.*np.pi/sizeX * np.arange(-nX//2+1, 0, 1)
       ly = 2.*np.pi/sizeY * np.arange(nY//2+1)
       self.lx, self.ly = np.meshgrid(lx, ly, indexing='ij')
       
@@ -214,16 +214,16 @@ class FlatMap(object):
       # ie one more element, and offset by half a cell
       #
       # left part of plot
-      lxLeft = 2.*np.pi/self.sizeX * (np.arange(-self.nX/2+1, 1, 1) - 0.5)
+      lxLeft = 2.*np.pi/self.sizeX * (np.arange(-self.nX//2+1, 1, 1) - 0.5)
       ly = 2.*np.pi/self.sizeY * (np.arange(self.nY//2+1+1) - 0.5)
       lx, ly = np.meshgrid(lxLeft, ly, indexing='ij')
-      cp1=ax.pcolormesh(lx, ly, dataFourier[self.nX/2+1:,:], linewidth=0, rasterized=True)
+      cp1=ax.pcolormesh(lx, ly, dataFourier[self.nX//2+1:,:], linewidth=0, rasterized=True)
       #
       # right part of plot
-      lxRight = 2.*np.pi/self.sizeX * (np.arange(self.nX/2+1+1) - 0.5)
+      lxRight = 2.*np.pi/self.sizeX * (np.arange(self.nX//2+1+1) - 0.5)
       ly = 2.*np.pi/self.sizeY * (np.arange(self.nY//2+1+1) - 0.5)
       lx, ly = np.meshgrid(lxRight, ly, indexing='ij')
-      cp2=ax.pcolormesh(lx, ly, dataFourier[:self.nX/2+1,:], linewidth=0, rasterized=True)
+      cp2=ax.pcolormesh(lx, ly, dataFourier[:self.nX//2+1,:], linewidth=0, rasterized=True)
       #
       # choose color map: jet, summer, winter, Reds, gist_gray, YlOrRd, bwr, seismic
       cp1.set_cmap(cmap); cp2.set_cmap(cmap)
@@ -349,7 +349,7 @@ class FlatMap(object):
       d = np.sqrt(dx**2+dy**2)
       
       # Keep only some of the points
-      skip = (slice(None, None, self.nX/25), slice(None, None, self.nX/25))
+      skip = (slice(None, None, self.nX//25), slice(None, None, self.nX//25))
       
       fig=plt.figure(0)
       ax=fig.add_subplot(111)
