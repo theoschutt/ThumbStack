@@ -1,21 +1,22 @@
+import importlib
 import universe
-reload(universe)
+importlib.reload(universe)
 from universe import *
 
 import mass_conversion
-reload(mass_conversion)
+importlib.reload(mass_conversion)
 from mass_conversion import *
 
 import catalog
-reload(catalog)
+importlib.reload(catalog)
 from catalog import *
 
 import thumbstack
-reload(thumbstack)
+importlib.reload(thumbstack)
 from thumbstack import *
 
 import cmb
-reload(cmb)
+importlib.reload(cmb)
 from cmb import *
 
 # running on cori
@@ -25,7 +26,7 @@ from cmb import *
 
 ##################################################################################
 
-nProc = 32 # 1 haswell node on cori
+nProc = 1 # 1 haswell node on cori
 
 ##################################################################################
 ##################################################################################
