@@ -100,7 +100,7 @@ class ThumbStack(object):
       self.loadOverlapFlag()
       
       if save:
-         self.saveFiltering(nProc=self.nProc)
+         self.saveFiltering(nProc=self.nProc, test=test)
       self.loadFiltering()
       
       self.measureAllVarFromHitCount(plot=save)
@@ -109,7 +109,7 @@ class ThumbStack(object):
 
 
       if save:
-         self.saveAllStackedProfiles()
+         self.saveAllStackedProfiles(test=test)
       self.loadAllStackedProfiles()
 
       if save:
@@ -275,8 +275,8 @@ class ThumbStack(object):
       x = self.cmbHit[mask]
       path = self.pathFig+"/hist_cmbhit.pdf"
       myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB hit count', semilogy=True)
-   
-   
+
+
    ##################################################################################
    
 
@@ -538,7 +538,7 @@ class ThumbStack(object):
 
 
 
-   def saveFiltering(self, nProc=1):
+   def saveFiltering(self, nProc=1, test=False):
       
       print("Evaluate all filters on all objects")
       # loop over all objects in catalog
@@ -547,7 +547,7 @@ class ThumbStack(object):
 #       with sharedmem.MapReduce(np=nProc) as pool:
 #          f = lambda iObj: self.analyzeObject(iObj, test=False)
 #          result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
-      f = lambda iObj: self.analyzeObject(iObj, test=False)
+      f = lambda iObj: self.analyzeObject(iObj, test=test)
       result = np.array(list(map(f, list(range(self.Catalog.nObj)))))
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
@@ -824,7 +824,9 @@ class ThumbStack(object):
    ##################################################################################
 
 
-   def computeStackedProfile(self, filterType, est, iBootstrap=None, iVShuffle=None, tTh='', stackedMap=False, mVir=None, z=[0., 100.], ts=None, mask=None):
+   def computeStackedProfile(self, filterType, est, iBootstrap=None, iVShuffle=None, tTh='',
+                             stackedMap=False, mVir=None, z=[0., 100.], ts=None, mask=None,
+                             test=False):
       """Returns the estimated profile and its uncertainty for each aperture.
       est: string to select the estimator
       iBootstrap: index for bootstrap resampling
@@ -985,7 +987,6 @@ class ThumbStack(object):
          weights = m[:,np.newaxis] * v[:,np.newaxis] / s2Full
          #norm = np.mean(m) * sVTrue / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
          norm = np.mean(m) * np.std(v) / ts.Catalog.rV / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
-      # CHECK: is this where to do this???
       # tau: "weighted" by mean large scale temperature
       elif est=='tau_ti_uniformweight':
          weights = -Tlarge
@@ -995,7 +996,12 @@ class ThumbStack(object):
          weights = -np.sign(Tlarge)
          norm = 1./np.sum(np.abs(Tlarge), axis=0)
 
-   #tStop = time()
+      if test:
+         print('Estimator:', est)
+         print('Weights:', weights)
+         print('Norm:', norm)
+
+      #tStop = time()
       #print "stacked profile took", tStop-tStart, "sec"
 
 
@@ -1448,7 +1454,7 @@ class ThumbStack(object):
    ##################################################################################
 
 
-   def saveAllStackedProfiles(self):
+   def saveAllStackedProfiles(self, test=False):
       print("- compute all stacked profiles and their cov")
       tStart = time()
       data = np.zeros((self.nRAp, 3))
@@ -1466,13 +1472,15 @@ class ThumbStack(object):
          for iEst in range(len(self.Est)):
             est = self.Est[iEst]
             # measured stacked profile
-            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est) # [map unit * sr]
+            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, test=test) # [map unit * sr]
             np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_measured.txt", data)
             # expected stacked profile from tSZ
-            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='tsz') # [map unit * sr]
+            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='tsz',
+                                                              test=test) # [map unit * sr]
             np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_tsz.txt", data)
             # expected stacked profile from kSZ
-            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='ksz') # [map unit * sr]
+            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='ksz',
+                                                              test=test) # [map unit * sr]
             np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_ksz.txt", data)
 
          # covariance matrices from bootstrap,
@@ -1525,7 +1533,7 @@ class ThumbStack(object):
       self.sStackedProfile = {}
       self.covBootstrap = {}
       self.covVShuffle = {}
-      
+
       for iFilterType in range(len(self.filterTypes)):
          filterType = self.filterTypes[iFilterType]
 
@@ -1596,7 +1604,8 @@ class ThumbStack(object):
 
    ##################################################################################
 
-   def plotStackedProfile(self, filterType, Est, name=None, pathDir=None, theory=True, tsArr=None, plot=True, legend=True):
+   def plotStackedProfile(self, filterType, Est, name=None, pathDir=None, theory=True,
+                          tsArr=None, plot=True, legend=True):
       """Compares stacked profiles, and their uncertainties.
       If pathDir is not specified, save to local figure folder.
       """
