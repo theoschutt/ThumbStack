@@ -162,13 +162,16 @@ class ThumbStack(object):
       dyDeg = (2. * ny + 1.) * self.resCutoutArcmin / 60.
 
       # define geometry of small square maps to be extracted
-      shape, wcs = enmap.geometry(np.array([[-0.5*dxDeg,-0.5*dyDeg],[0.5*dxDeg,0.5*dyDeg]])*utils.degree, res=self.resCutoutArcmin*utils.arcmin, proj=self.projCutout)
+      shape, wcs = enmap.geometry(np.array([[-0.5*dxDeg,-0.5*dyDeg],
+                                            [0.5*dxDeg,0.5*dyDeg]])*utils.degree,
+                                  res=self.resCutoutArcmin*utils.arcmin, proj=self.projCutout)
       cutoutMap = enmap.zeros(shape, wcs)
 
       if test:
          print("cutout sides are dx, dy =", dxDeg*60., ",", dyDeg*60. , "arcmin")
          print("cutout pixel dimensions are", shape)
-         print("hence a cutout resolution of", dxDeg*60./shape[0], ",", dyDeg*60./shape[1], "arcmin per pixel")
+         print("hence a cutout resolution of", dxDeg*60./shape[0], ",",
+               dyDeg*60./shape[1], "arcmin per pixel")
          print("(requested", self.resCutoutArcmin, "arcmin per pixel)")
 
       return cutoutMap
@@ -182,7 +185,8 @@ class ThumbStack(object):
 #                           np.arange(self.Catalog.nObj),
 #                           np.sort(self.Catalog.Mvir))[1:]
       
-      self.MMax = np.logspace(np.log10(self.Catalog.Mvir.min()*1.1), np.log10(self.Catalog.Mvir.max()), self.nMMax)
+      self.MMax = np.logspace(np.log10(self.Catalog.Mvir.min()*1.1),
+                              np.log10(self.Catalog.Mvir.max()), self.nMMax)
 
       if test:
          print("Checking the mMax bins:")
@@ -241,7 +245,8 @@ class ThumbStack(object):
 #       print(overlapFlag)
 #       print(np.sum(overlapFlag))
 #       print(np.sum(overlapFlag)/self.Catalog.nObj)
-      print("Out of", self.Catalog.nObj, "objects,", np.sum(overlapFlag), "overlap, ie a fraction", np.sum(overlapFlag)/self.Catalog.nObj)
+      print("Out of", self.Catalog.nObj, "objects,", np.sum(overlapFlag),
+            "overlap, ie a fraction", np.sum(overlapFlag)/self.Catalog.nObj)
       np.savetxt(self.pathOut+"/overlap_flag.txt", overlapFlag)
    
    
@@ -256,7 +261,8 @@ class ThumbStack(object):
       # mask, before re-thresholding
       x = self.cmbMask.copy()
       path = self.pathFig+"/hist_cmbmask_prerethresh.pdf"
-      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB mask value', semilogy=True)
+      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB mask value',
+                  semilogy=True)
 
       # rethreshold the mask
       mask = (self.cmbMask>0.5)[0]
@@ -264,24 +270,28 @@ class ThumbStack(object):
       # mask, after re-thresholding
       x = 1. * mask.copy()
       path = self.pathFig+"/hist_cmbmask_postrethresh.pdf"
-      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB mask value', semilogy=True)
+      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB mask value',
+                  semilogy=True)
 
       # masked map histogram
       x = self.cmbMap[mask]
       path = self.pathFig+"/hist_cmbmap.pdf"
-      myHistogram(x, nBins=71, lim=(-10.*np.std(x), 10.*np.std(x)), path=path, nameLatex=r'CMB map value', semilogy=True, doGauss=True, S2Theory=[110.**2])
+      myHistogram(x, nBins=71, lim=(-10.*np.std(x), 10.*np.std(x)), path=path,
+                  nameLatex=r'CMB map value', semilogy=True, doGauss=True, S2Theory=[110.**2])
 
       # masked hit count histogram
       x = self.cmbHit[mask]
       path = self.pathFig+"/hist_cmbhit.pdf"
-      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB hit count', semilogy=True)
+      myHistogram(x, nBins=71, lim=(np.min(x), np.max(x)), path=path, nameLatex=r'CMB hit count',
+                  semilogy=True)
 
 
    ##################################################################################
    
 
    def extractStamp(self, ra, dec, test=False):
-      """Extracts a small CEA or CAR map around the given position, with the given angular size and resolution.
+      """Extracts a small CEA or CAR map around the given position, with the given angular
+      size and resolution.
       ra, dec in degrees.
       Does it for the map, the mask and the hit count.
       """
@@ -352,7 +362,8 @@ class ThumbStack(object):
    ##################################################################################
 
 
-   def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, r0, r1, filterType='diskring', vTheta=0, vPhi=0, test=False):
+   def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, r0, r1,
+                                filterType='diskring', vTheta=0, vPhi=0, test=False):
       """Apply an AP filter (disk minus ring) to a stamp map:
       AP = int d^2theta * Filter * map.
       Unit is [map unit * sr]
@@ -440,8 +451,10 @@ class ThumbStack(object):
          print("= nb of pixels where filter=0: "+str(len(np.where(filterW==0.)[0])))
          print("+ nb of pixels where filter>0: "+str(len(np.where(filterW>0.)[0])))
          print("+ nb of pixels where filter<0: "+str(len(np.where(filterW<0.)[0])))
-         print("- disk area: "+str(diskArea)+" sr, ie "+str(diskArea * (180.*60./np.pi)**2)+"arcmin^2")
-         print("  (from r0, expect "+str(np.pi*r0**2)+" sr, ie "+str(np.pi*r0**2 * (180.*60./np.pi)**2)+"arcmin^2)")
+         print(("- disk area: "+str(diskArea)+" sr, ie "
+                +str(diskArea * (180.*60./np.pi)**2)+"arcmin^2"))
+         print(("  (from r0, expect "+str(np.pi*r0**2)+" sr, ie "
+                +str(np.pi*r0**2 * (180.*60./np.pi)**2)+"arcmin^2)"))
          print("- disk-ring filter sums over pixels to "+str(np.sum(filterW)))
          print("  (should be 0; compared to "+str(len(filterW.flatten()))+")")
          print("- filter on unit disk: "+str(np.sum(pixArea * filterW * inDisk)))
