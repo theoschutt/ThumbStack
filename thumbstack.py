@@ -6,7 +6,10 @@ from headers import *
 class ThumbStack(object):
 
 #   def __init__(self, U, Catalog, pathMap="", pathMask="", pathHit="", name="test", nameLong=None, save=False, nProc=1):
-   def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, name="test", nameLong=None, save=False, nProc=1, filterTypes='diskring', doStackedMap=False, doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9, cmbUnitLatex=r'$\mu$K'):
+   def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, name="test", nameLong=None,
+                save=False, nProc=1, filterTypes='diskring', doStackedMap=False, doMBins=False,
+                doVShuffle=False, doBootstrap=False, cmbNu=150.e9, cmbUnitLatex=r'$\mu$K',
+                workDir='.', test=False):
       
       self.nProc = nProc
       self.U = U
@@ -39,7 +42,8 @@ class ThumbStack(object):
       elif filterTypes=='taudiskring':
          self.filterTypes = np.array(['taudiskring'])
       elif filterTypes=='all':
-         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk', 'taudisk', 'taudiskring'])
+         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk',
+                                      'taudisk', 'taudiskring'])
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
@@ -51,8 +55,8 @@ class ThumbStack(object):
          self.EstVShuffle = []   #['ksz_varweight']
          self.EstMBins = ['tsz_uniformweight', 'tsz_varweight']# ['tsz_varweight', 'ksz_varweight']
       else:
-         self.Est = ['tau_ti_uniformweight','tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
-         self.EstBootstrap = ['tau_ti_uniformweight','tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
+         self.Est = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
+         self.EstBootstrap = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
          self.EstVShuffle = []   #['ksz_uniformweight']
          self.EstMBins = [] #['ksz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
 
@@ -72,25 +76,24 @@ class ThumbStack(object):
       self.mMin = 0. #1.e6
       self.mMax = np.inf #1.e14 # 1.e17
 
-      
       # Output path
-      self.pathOut = "./output/thumbstack/"+self.name
+      self.pathOut = os.path.join(workDir, "output/thumbstack/"+self.name)
       if not os.path.exists(self.pathOut):
          os.makedirs(self.pathOut)
 
       # Figures path
-      self.pathFig = "./figures/thumbstack/"+self.name
+      self.pathFig = os.path.join(workDir, "figures/thumbstack/"+self.name)
       if not os.path.exists(self.pathFig):
          os.makedirs(self.pathFig)
       # test figures path
-      self.pathTestFig = self.pathFig+"/tests"
+      self.pathTestFig = os.path.join(self.pathFig, "tests")
       if not os.path.exists(self.pathTestFig):
          os.makedirs(self.pathTestFig)
 
       print("- Thumbstack: "+str(self.name))
       
       self.loadAPRadii()
-      self.loadMMaxBins()
+      self.loadMMaxBins(test=test)
       
       if save:
          self.saveOverlapFlag(nProc=self.nProc)
@@ -115,7 +118,7 @@ class ThumbStack(object):
          self.computeAllSnr()
 
       #if save:
-      if False: #skipping for now for tau estimator dev
+      if True: #skipping for now for tau estimator dev
          if doStackedMap:
             # save all stacked maps
             # self.saveAllStackedMaps()
@@ -123,7 +126,7 @@ class ThumbStack(object):
             # the best tsz and ksz estimators,
             # and for the diskring weighting
             #self.saveAllStackedMaps(filterTypes=['diskring'], Est=['tsz_varweight', 'ksz_varweight'])
-            self.saveAllStackedMaps(filterTypes=None, Est=None)
+            self.saveAllStackedMaps(filterTypes=self.FilterTypes, Est=self.Est)
 
 
 
@@ -375,7 +378,8 @@ class ThumbStack(object):
       pixArea = ra.area() / len(ra.flatten())          
         
       # detect point sources within the filter:
-      # gives 0 in the absence of point sources/edges; gives >=1 in the presence of point sources/edges
+      # gives 0 in the absence of point sources/edges; gives >=1 in the presence
+      # of point sources/edges
       filtMask = np.sum((radius<=r1) * (1-stampMask))   # [dimensionless]
 
       # disk filter [dimensionless]
@@ -391,7 +395,8 @@ class ThumbStack(object):
          # disk minus ring filter [dimensionless]
          filterW = inDisk - inRing
          if np.isnan(np.sum(filterW)):
-            print("filterW sums to nan", r0, r1, np.sum(radius), np.sum(1.*(radius>r0)), np.sum(1.*(radius>r0)*(radius<=r1)))
+            print("filterW sums to nan", r0, r1, np.sum(radius), np.sum(1.*(radius>r0)),
+                  np.sum(1.*(radius>r0)*(radius<=r1)))
       elif (filterType=='disk') or (filterType=='taudisk'):
          # disk filter [dimensionless]
          inDisk = 1.*(radius<=r0)

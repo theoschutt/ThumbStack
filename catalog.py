@@ -5,7 +5,8 @@ from headers import *
 
 class Catalog(object):
 
-   def __init__(self, U, MassConversion, name="test", nameLong=None, pathInCatalog="", rV=1.,  save=False, nObj=None):
+   def __init__(self, U, MassConversion, name="test", nameLong=None, pathInCatalog="",
+                rV=1.,  save=False, workDir='.', nObj=None):
       '''nObj: used to keep the first nObj objects of the catalog, useful for quick debugging
       '''
 
@@ -20,7 +21,8 @@ class Catalog(object):
       self.pathInCatalog = pathInCatalog
       
       # Output path
-      self.pathOut = "./output/catalog/"+self.name
+      self.workDir = workDir
+      self.pathOut = os.path.join(self.workDir, "output/catalog/", self.name)
       if not os.path.exists(self.pathOut):
          os.makedirs(self.pathOut)
       # catalog path
@@ -29,7 +31,7 @@ class Catalog(object):
       self.pathOutVtk = self.pathOut + "/catalog.vtk"
       
       # Figures path
-      self.pathFig = "./figures/catalog/"+self.name
+      self.pathFig = os.path.join(self.workDir, "figures/catalog/", self.name)
       if not os.path.exists(self.pathFig):
          os.makedirs(self.pathFig)
       
@@ -55,7 +57,7 @@ class Catalog(object):
       """
       # First copy the output catalog
       # new catalog path
-      newPathOut = "./output/catalog/"+name
+      newPathOut = os.path.join(self.workDir, "output/catalog/", name)
       if not os.path.exists(newPathOut):
          os.makedirs(newPathOut)
       newPathOutCatalog = newPathOut + "/catalog.txt"
@@ -63,7 +65,8 @@ class Catalog(object):
       copyfile(self.pathOutCatalog, newPathOutCatalog)
       
       # Then copy the catalog properties
-      newCat = Catalog(self.U, self.MassConversion, name=name, nameLong=nameLong, pathInCatalog=self.pathInCatalog, save=False)
+      newCat = Catalog(self.U, self.MassConversion, name=name, nameLong=nameLong,
+                       pathInCatalog=self.pathInCatalog, save=False)
       return newCat
 
 
@@ -72,7 +75,7 @@ class Catalog(object):
       keeping only the objects with indices in I
       """
       # new catalog path
-      newPathOut = "./output/catalog/"+name
+      newPathOut = os.path.join(self.workDir, "output/catalog/", name)
       if not os.path.exists(newPathOut):
          os.makedirs(newPathOut)
       newPathOutCatalog = newPathOut + "/catalog.txt"
@@ -83,7 +86,8 @@ class Catalog(object):
       # save it to new catalog path
       np.savetxt(newPathOutCatalog, data)
       # Then copy the catalog properties
-      newCat = Catalog(self.U, self.MassConversion, name=name, nameLong=nameLong, pathInCatalog=self.pathInCatalog, save=False)
+      newCat = Catalog(self.U, self.MassConversion, name=name, nameLong=nameLong,
+                       pathInCatalog=self.pathInCatalog, save=False)
       return newCat
 
 
