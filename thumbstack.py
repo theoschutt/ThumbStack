@@ -47,8 +47,6 @@ class ThumbStack(object):
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
-      # CHECK: how are we handling cmbHit in the sim? Also, is the below how to do this?
-      # How to set whether an estimator uses these attributes?
       if self.cmbHit is not None:
          self.Est = ['tsz_uniformweight', 'tsz_varweight']   #['tsz_uniformweight', 'tsz_hitweight', 'tsz_varweight', 'ksz_uniformweight', 'ksz_hitweight', 'ksz_varweight', 'ksz_massvarweight']
          self.EstBootstrap = ['tsz_uniformweight', 'tsz_varweight']  #['tsz_varweight', 'ksz_varweight']
@@ -126,7 +124,7 @@ class ThumbStack(object):
             # the best tsz and ksz estimators,
             # and for the diskring weighting
             #self.saveAllStackedMaps(filterTypes=['diskring'], Est=['tsz_varweight', 'ksz_varweight'])
-            self.saveAllStackedMaps(filterTypes=self.FilterTypes, Est=self.Est)
+            self.saveAllStackedMaps(filterTypes=self.filterTypes, Est=self.Est)
 
 
 
@@ -574,7 +572,7 @@ class ThumbStack(object):
          filtMask = np.array([result[iObj,1][filterType][:] for iObj in range(self.Catalog.nObj)])
          filtHitNoiseStdDev = np.array([result[iObj,2][filterType][:] for iObj in range(self.Catalog.nObj)])
          filtArea = np.array([result[iObj,3][filterType][:] for iObj in range(self.Catalog.nObj)])
-         
+
          np.savetxt(self.pathOut+"/"+filterType+"_filtmap.txt", filtMap)
          np.savetxt(self.pathOut+"/"+filterType+"_filtmask.txt", filtMask)
          np.savetxt(self.pathOut+"/"+filterType+"_filtnoisestddev.txt", filtHitNoiseStdDev)
@@ -598,7 +596,8 @@ class ThumbStack(object):
    ##################################################################################
 
 
-   def catalogMask(self, overlap=True, psMask=True, mVir=None, z=[0., 100.], extraSelection=1., filterType=None, outlierReject=True):
+   def catalogMask(self, overlap=True, psMask=True, mVir=None, z=[0., 100.], extraSelection=1.,
+                   filterType=None, outlierReject=True):
       '''Returns catalog mask: 1 for objects to keep, 0 for objects to discard.
       Use as:
       maskedQuantity = Quantity[mask]
@@ -664,14 +663,16 @@ class ThumbStack(object):
 
    def measureVarFromHitCount(self, filterType,  plot=False):
       """Returns a list of functions, one for each AP filter radius,
-      where the function takes filtHitNoiseStdDev**2 \propto [(map var) * sr^2] as input and returns the
-      actual measured filter variance [(map unit)^2 * sr^2].
+      where the function takes filtHitNoiseStdDev**2 \propto [(map var) * sr^2] as input
+      and returns the actual measured filter variance [(map unit)^2 * sr^2].
       The functions are expected to be linear if the detector noise is the main source of noise,
       and if the hit counts indeed reflect the detector noise.
       To be used for noise weighting in the stacking.
       """
       # keep only objects that overlap, and mask point sources
-      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()), outlierReject=False)
+      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType,
+                              mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()),
+                              outlierReject=False)
       # This array contains the true variances for each object and aperture 
       filtVarTrue = np.zeros((self.Catalog.nObj, self.nRAp))
 
@@ -941,6 +942,7 @@ class ThumbStack(object):
          v = v[J]
          s2Hit = s2Hit[J,:]
          s2Full = s2Full[J,:]
+         Tlarge = Tlarge[J,:]
          m = m[J]
 
       if iVShuffle is not None:
@@ -1029,7 +1031,7 @@ class ThumbStack(object):
       else:
          # define chunks
          nChunk = ts.nProc
-         chunkSize = ts.Catalog.nObj / nChunk
+         chunkSize = ts.Catalog.nObj // nChunk
          # list of indices for each of the nChunk chunks
          chunkIndices = [list(range(iChunk*chunkSize, (iChunk+1)*chunkSize)) for iChunk in range(nChunk)]
          # make sure not to miss the last few objects:
@@ -1038,7 +1040,7 @@ class ThumbStack(object):
 
          # select weights for a typical aperture size (not the smallest, not the largest)
          #iRAp0 = ts.nRAp / 2
-         iRAp0 = ts.nRAp / 4
+         iRAp0 = ts.nRAp // 4
          norm = norm[iRAp0]
          # need to link object number with weight,
          # despite the mask
