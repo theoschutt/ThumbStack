@@ -294,7 +294,7 @@ class ThumbStack(object):
       Does it for the map, the mask and the hit count.
       """
 
-      stampMap = self.cutoutGeometry()
+      stampMap = self.cutoutGeometry(test=test)
       stampMask = stampMap.copy()
       stampHit = stampMap.copy()
 
@@ -1052,7 +1052,7 @@ class ThumbStack(object):
             chunk = chunkIndices[iChunk]
 
             # start with a null map for stacking
-            resMap = ts.cutoutGeometry()
+            resMap = ts.cutoutGeometry(test=test)
             for iObj in chunk:
                if iObj%10000==0:
                   print("- analyze object", iObj)
