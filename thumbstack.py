@@ -429,9 +429,14 @@ class ThumbStack(object):
 
       if (filterType=='taudisk') or (filterType=='taudiskring'):
          # get large scale mean temp over largest disk that fits in the stamp
-         big_r =  np.floor(self.rApMaxArcmin * np.sqrt(2.))
+         big_r =  np.floor(self.rApMaxArcmin * np.sqrt(2.)) # CHECK: need the floor?
          inBigDisk =  1.*(radius<=big_r)
-         filtHitNoiseStdDev = np.sum(pixArea * inBigDisk * stampMap)
+         # filtHitNoiseStdDev = np.sum(pixArea * inBigDisk * stampMap)
+         # WARNING: for tau estimators, repurposing filtHitNoiseDev as the large-
+         # scale mean temp
+         # We want the average large-scale temperature (in units of the map unit)
+         # not the angular integral (in units of temperature map * sr)
+         filtHitNoiseStdDev = np.sum(inBigDisk * stampMap) / np.sum(inBigDisk)
       elif self.cmbHit is not None:
          filtHitNoiseStdDev = np.sqrt(np.sum((pixArea * filterW)**2 / (1.e-16 + stampHit))) # to get the std devs [sr / sqrt(hit unit)]
       else:
