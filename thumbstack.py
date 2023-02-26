@@ -2087,9 +2087,9 @@ class ThumbStack(object):
       with sigma_cluster in arcmin
       Assumes equal area disk-ring filter
       """
-      if filterType=='diskring':
+      if (filterType=='diskring') or (filterType=='taudiskring'):
          result = (1. - np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2))**2
-      elif filterType=='disk':
+      elif (filterType=='disk') or (filterType=='taudisk'):
          result = 1. - np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2)
       elif filterType=='ring':
          result = np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2) - np.exp(-0.5*(self.RApArcmin*np.sqrt(2.))**2/sigma_cluster**2)
