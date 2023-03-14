@@ -389,12 +389,12 @@ class FlatMap(object):
 
 
    ###############################################################################
-   # Fourier transforms, notmalized such that
+   # Fourier transforms, normalized such that
    # f(k) = int dx e-ikx f(x)
    # f(x) = int dk/2pi eikx f(k)
    
    def fourier(self, data=None):
-      """Fourier transforms, notmalized such that
+      """Fourier transforms, normalized such that
       f(k) = int dx e-ikx f(x)
       f(x) = int dk/2pi eikx f(k)
       """
@@ -408,7 +408,7 @@ class FlatMap(object):
       return result
 
    def inverseFourier(self, dataFourier=None):
-      """Fourier transforms, notmalized such that
+      """Fourier transforms, normalized such that
       f(k) = int dx e-ikx f(x)
       f(x) = int dk/2pi eikx f(k)
       """
@@ -632,11 +632,12 @@ class FlatMap(object):
       return dataFourier
    '''
    
-   def genGRF(self, fCl, test=False):
+   def genGRF(self, fCl, seed=None, test=False):
       
-      # generate Gaussian white noise in real space
+      # generate Gaussian white noise in real space, with optional fixed seed
       data = np.zeros_like(self.data)
-      data = np.random.normal(loc=0., scale=1./np.sqrt(self.dX*self.dY), size=len(self.x.flatten()))
+      rng = np.random.default_rng(seed=seed)
+      data = rng.normal(loc=0., scale=1./np.sqrt(self.dX*self.dY), size=len(self.x.flatten()))
       data = data.reshape(np.shape(self.x))
    
       # Fourier transform
