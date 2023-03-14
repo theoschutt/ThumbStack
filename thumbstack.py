@@ -6,10 +6,10 @@ from headers import *
 class ThumbStack(object):
 
 #   def __init__(self, U, Catalog, pathMap="", pathMask="", pathHit="", name="test", nameLong=None, save=False, nProc=1):
-   def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, name="test", nameLong=None,
-                save=False, nProc=1, filterTypes='diskring', doStackedMap=False, doMBins=False,
-                doVShuffle=False, doBootstrap=False, cmbNu=150.e9, cmbUnitLatex=r'$\mu$K',
-                workDir='.', test=False):
+   def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
+                nameLong=None, save=False, nProc=1, filterTypes='diskring', doStackedMap=False,
+                doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
+                cmbUnitLatex=r'$\mu$K', workDir='.', test=False):
       
       self.nProc = nProc
       self.U = U
@@ -20,6 +20,7 @@ class ThumbStack(object):
       else:
          self.nameLong = nameLong
       self.cmbMap = cmbMap
+      self.cmbMap2 = cmbMap2
       self.cmbMask = cmbMask
       self.cmbHit = cmbHit
       self.doMBins = doMBins
@@ -295,6 +296,7 @@ class ThumbStack(object):
       """
 
       stampMap = self.cutoutGeometry(test=test)
+      stampMap2 = self.cutoutGeometry(test=test)
       stampMask = stampMap.copy()
       stampHit = stampMap.copy()
 
@@ -320,6 +322,10 @@ class ThumbStack(object):
       # Here, I use bilinear interpolation
       stampMap[:,:] = self.cmbMap.at(ipos, prefilter=True, mask_nan=False, order=1)
       stampMask[:,:] = self.cmbMask.at(ipos, prefilter=True, mask_nan=False, order=1)
+      if self.cmbMap2 is not None:
+         stampMap2[:,:] = self.cmbMap2.at(ipos, prefilter=True, mask_nan=False, order=1)
+      else:
+         stampMap2 = None
       if self.cmbHit is not None:
          stampHit[:,:] = self.cmbHit.at(ipos, prefilter=True, mask_nan=False, order=1)
 
@@ -353,7 +359,7 @@ class ThumbStack(object):
          plots=enplot.plot(stampHit, grid=True)
          enplot.write(self.pathTestFig+"/stamphit_ra"+np.str(np.round(ra, 2))+"_dec"+np.str(np.round(dec, 2)), plots)
 
-      return opos, stampMap, stampMask, stampHit
+      return opos, stampMap, stampMask, stampHit, stampMap2
 
 
 
@@ -361,7 +367,7 @@ class ThumbStack(object):
 
 
    def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, r0, r1,
-                                filterType='diskring', vTheta=0, vPhi=0, test=False):
+                                stampMap2=None, filterType='diskring', vTheta=0, vPhi=0, test=False):
       """Apply an AP filter (disk minus ring) to a stamp map:
       AP = int d^2theta * Filter * map.
       Unit is [map unit * sr]
@@ -371,6 +377,9 @@ class ThumbStack(object):
       int d^2theta * Filter = 0.
       r0 and r1 are the radius of the disk and ring in radians.
       stampMask should have values 0 and 1 only.
+      stampMap2 is associated with cmbMap2 if not None. Currently only used for tau-
+      related filtering. It is assumed that stampMap2 uses the same origin, mask and hitmap
+      as stampMap.
       Output:
       filtMap: [map unit * sr]
       filtMask: [mask unit * sr]
@@ -432,12 +441,14 @@ class ThumbStack(object):
          # CHECK: is there a good reason not to just get mean temp over whole stamp?
          big_r =  self.rApMaxArcmin * np.sqrt(2.) / 60. / 180. * np.pi
          inBigDisk =  1.*(radius<=big_r)
-         # filtHitNoiseStdDev = np.sum(pixArea * inBigDisk * stampMap)
-         # WARNING: for tau estimators, repurposing filtHitNoiseDev as the large-
+         # WARNING: for tau estimators, we're repurposing filtHitNoiseDev as the large-
          # scale mean temp
          # We want the average large-scale temperature (in units of the map unit)
          # not the angular integral (in units of temperature map * sr)
-         filtHitNoiseStdDev = np.sum(inBigDisk * stampMap) / np.sum(inBigDisk)
+         if stampMap2 is None:
+            # CHECK: should this be required? Or maybe just set stampMap2 = stampMap.
+            raise TypeError('Missing required second stamp map for %s filter.'%filterType)
+         filtHitNoiseStdDev = np.sum(inBigDisk * stampMap2) / np.sum(inBigDisk)
          if test:
             print('T_large disk radius [rad]=', big_r)
             print('No. pixels in stamp=', len(ra.flatten()))
@@ -526,7 +537,7 @@ class ThumbStack(object):
          dArcmin = np.ceil(2. * self.rApMaxArcmin * np.sqrt(2.))
          dDeg = dArcmin / 60.
          # extract postage stamp around it
-         opos, stampMap, stampMask, stampHit = self.extractStamp(ra, dec, test=test)
+         opos, stampMap, stampMask, stampHit, stampMap2 = self.extractStamp(ra, dec, test=test)
          
          for iFilterType in range(len(self.filterTypes)):
             filterType = self.filterTypes[iFilterType]
@@ -544,7 +555,12 @@ class ThumbStack(object):
                r1 = r0 * np.sqrt(2.)
                
                # perform the filtering
-               filtMap[filterType][iRAp], filtMask[filterType][iRAp], filtHitNoiseStdDev[filterType][iRAp], filtArea[filterType][iRAp] = self.aperturePhotometryFilter(opos, stampMap, stampMask, stampHit, r0, r1, filterType=filterType, vTheta=vTheta, vPhi=vPhi, test=test)
+               (filtMap[filterType][iRAp],
+                filtMask[filterType][iRAp],
+                filtHitNoiseStdDev[filterType][iRAp],
+                filtArea[filterType][iRAp]) = self.aperturePhotometryFilter(
+                   opos, stampMap, stampMask, stampHit, r0, r1, stampMap2=stampMap2,
+                   filterType=filterType, vTheta=vTheta, vPhi=vPhi, test=test)
 
       if test:
          print(" plot the measured profile")
