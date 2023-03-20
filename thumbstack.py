@@ -131,7 +131,7 @@ class ThumbStack(object):
 
    ##################################################################################
    ##################################################################################
-   
+
    def loadAPRadii(self):
       # radii to use for AP filter: comoving Mpc/h
       self.nRAp = 9 #30 #9  #4
@@ -366,16 +366,16 @@ class ThumbStack(object):
    ##################################################################################
 
 
-   def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, r0, r1,
+   def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, iRAp,
                                 stampMap2=None, filterType='diskring', vTheta=0, vPhi=0, test=False):
-      """Apply an AP filter (disk minus ring) to a stamp map:
+      """Apply an AP filter (e.g. disk minus ring) to a stamp map:
       AP = int d^2theta * Filter * map.
       Unit is [map unit * sr]
       The filter function is dimensionless:
       Filter = 1 in the disk, - (disk area)/(ring area) in the ring, 0 outside.
       Hence:
       int d^2theta * Filter = 0.
-      r0 and r1 are the radius of the disk and ring in radians.
+      iRAp is the index of the filter (disk or ring) to be applied.
       stampMask should have values 0 and 1 only.
       stampMap2 is associated with cmbMap2 if not None. Currently only used for tau-
       related filtering. It is assumed that stampMap2 uses the same origin, mask and hitmap
@@ -394,7 +394,22 @@ class ThumbStack(object):
       radius = np.sqrt(ra**2 + dec**2)
       # exact angular area of a pixel [sr] (same for all pixels in CEA, not CAR)
       pixArea = ra.area() / len(ra.flatten())          
-        
+
+      # set up inner and outer radii of the disk and/or ring filters. Different filters
+      # handle the limits differently, so let's set them here.
+      if (filterType=='ring') or (filterType=='tauring') or (filterType=='meanring'):
+         # want adjacent, non-overlapping rings, so start from 0 and have the
+         # outer annulus radius match the equivalent disk.
+         if iRAp == 0:
+            r0 = 0
+         else:
+            r0 = self.RApArcmin[iRAp - 1] / 60. * np.pi / 180.
+         r1 = self.RApArcmin[iRAp] / 60. * np.pi / 180.
+      else:
+         # everything else uses disks and rings with equal area
+         r0 = self.RApArcmin[iRAp] / 60. * np.pi / 180.
+         r1 = r0 * np.sqrt(2)
+
       # detect point sources within the filter:
       # gives 0 in the absence of point sources/edges; gives >=1 in the presence
       # of point sources/edges
@@ -406,6 +421,8 @@ class ThumbStack(object):
       diskArea = np.sum(inDisk) * pixArea
       # ring filter [dimensionless]
       inRing = 1.*(radius>r0)*(radius<=r1)
+      # exact angular area of ring [sr]
+      ringArea = np.sum(inRing) * pixArea
 
       if (filterType=='diskring') or (filterType=='taudiskring'):
          # normalize the ring so that the disk-ring filter integrates exactly to zero
@@ -415,14 +432,19 @@ class ThumbStack(object):
          if np.isnan(np.sum(filterW)):
             print("filterW sums to nan", r0, r1, np.sum(radius), np.sum(1.*(radius>r0)),
                   np.sum(1.*(radius>r0)*(radius<=r1)))
+         # filter area just saved for debugging/logging
+         filtArea = diskArea
       elif (filterType=='disk') or (filterType=='taudisk'):
          # disk filter [dimensionless]
          inDisk = 1.*(radius<=r0)
          filterW = inDisk
-      elif filterType=='ring':
+         filtArea = diskArea
+      elif (filterType=='ring') or (filterType=='tauring'):
          filterW = inRing
+         filtArea = ringArea
       elif filterType=='meanring':
          filterW = inRing / np.sum(pixArea * inRing)
+         filtArea = ringArea
       elif filterType=='cosdisk':
          # angle between transverse velocity and horizontal axis
          phi1 = np.arctan2(-vTheta,vPhi)   # np.arctan2 = 2.*np.arctan(y/(x+sqrt(x**2+y**2))) chooses correct quadrant
@@ -431,29 +453,35 @@ class ThumbStack(object):
          # cosdisk filter [dimensionless]
          inDisk = 1.*(radius<=r0)
          filterW = inDisk * np.cos(phi1-phi2)
+         filtArea = diskArea
 
       # apply the filter: int_disk d^2theta map -  disk_area / ring_area * int_ring d^2theta map
       filtMap = np.sum(pixArea * filterW * stampMap)   # [map unit * sr]
       # quantify noise std dev in the filter
 
-      if (filterType=='taudisk') or (filterType=='taudiskring'):
+      # WARNING: for tau estimators, we're repurposing filtHitNoiseDev as the large-
+      # scale mean temp
+      if (filterType=='taudisk') or (filterType=='tauring') or (filterType=='taudiskring'):
+         # can do T_large estimation with a different map, if given
+         # otherwise, just use the same map as for T_small
+         if stampMap2 is None:
+            stampMap2 = stampMap
+
          # get large scale mean temp over largest disk that fits in the stamp
          # CHECK: is there a good reason not to just get mean temp over whole stamp?
          big_r =  self.rApMaxArcmin * np.sqrt(2.) / 60. / 180. * np.pi
          inBigDisk =  1.*(radius<=big_r)
-         # WARNING: for tau estimators, we're repurposing filtHitNoiseDev as the large-
-         # scale mean temp
+
          # We want the average large-scale temperature (in units of the map unit)
          # not the angular integral (in units of temperature map * sr)
-         if stampMap2 is None:
-            # CHECK: should this be required? Or maybe just set stampMap2 = stampMap.
-            raise TypeError('Missing required second stamp map for %s filter.'%filterType)
          filtHitNoiseStdDev = np.sum(inBigDisk * stampMap2) / np.sum(inBigDisk)
          if test:
+            print('Filter type:',filterType)
             print('T_large disk radius [rad]=', big_r)
             print('No. pixels in stamp=', len(ra.flatten()))
             print('No. pixels in big disk=',np.sum(inBigDisk))
             print('No. pixels in disk=',np.sum(inDisk))
+            print('No. pixels in ring=',np.sum(inRing))
             print('T_large=',filtHitNoiseStdDev)
       elif self.cmbHit is not None:
          filtHitNoiseStdDev = np.sqrt(np.sum((pixArea * filterW)**2 / (1.e-16 + stampHit))) # to get the std devs [sr / sqrt(hit unit)]
@@ -491,7 +519,7 @@ class ThumbStack(object):
          plots=enplot.plot(filterMap,grid=True, min=-vmax, max=vmax)#, color='hotcold')
          enplot.write(self.pathTestFig+"/stampfilter_r0"+floatExpForm(r0)+"_r1"+floatExpForm(r1), plots)
 
-      return filtMap, filtMask, filtHitNoiseStdDev, diskArea
+      return filtMap, filtMask, filtHitNoiseStdDev, filtArea
 
 
 
@@ -549,17 +577,17 @@ class ThumbStack(object):
                ## convert to radians at the given redshift
                #r0 = rApMpch / self.U.bg.comoving_transverse_distance(z) # rad
 
-               # Disk radius in rad
-               r0 = self.RApArcmin[iRAp] / 60. * np.pi/180.
-               # choose an equal area AP filter
-               r1 = r0 * np.sqrt(2.)
+               # # Disk radius in rad
+               # r0 = self.RApArcmin[iRAp] / 60. * np.pi/180.
+               # # choose an equal area AP filter
+               # r1 = r0 * np.sqrt(2.)
                
                # perform the filtering
                (filtMap[filterType][iRAp],
                 filtMask[filterType][iRAp],
                 filtHitNoiseStdDev[filterType][iRAp],
                 filtArea[filterType][iRAp]) = self.aperturePhotometryFilter(
-                   opos, stampMap, stampMask, stampHit, r0, r1, stampMap2=stampMap2,
+                   opos, stampMap, stampMask, stampHit, iRAp, stampMap2=stampMap2,
                    filterType=filterType, vTheta=vTheta, vPhi=vPhi, test=test)
 
       if test:
@@ -1934,7 +1962,7 @@ class ThumbStack(object):
          plt.show()
       else:
          fig.clf()
-      
+
 
       # Correlation coefficient
       fig=plt.figure(1)
@@ -2170,12 +2198,12 @@ class ThumbStack(object):
       # loop over the radii for the AP filter
       for iRAp in range(self.nRAp):
          # Disk radius in rad
-         r0 = self.RApArcmin[iRAp] / 60. * np.pi/180.
-         # choose an equal area AP filter
-         r1 = r0 * np.sqrt(2.)
+         # r0 = self.RApArcmin[iRAp] / 60. * np.pi/180.
+         # # choose an equal area AP filter
+         # r1 = r0 * np.sqrt(2.)
          
          # perform the filtering
-         filtMap[iRAp],_,_,_ = self.aperturePhotometryFilter(opos, stampMap, stampMap, stampMap, r0, r1, filterType=filterType, test=False)
+         filtMap[iRAp],_,_,_ = self.aperturePhotometryFilter(opos, stampMap, stampMap, stampMap, iRAp, filterType=filterType, test=False)
       
       
       if test:
