@@ -6,6 +6,9 @@ from headers import *
 class ThumbStack(object):
 
 #   def __init__(self, U, Catalog, pathMap="", pathMask="", pathHit="", name="test", nameLong=None, save=False, nProc=1):
+# TODO: add minRad [default: 1], maxRad [default: 6], add nApertures [default: 9] arguments to avoid hardcoding them in
+# TODO: write docstring with argument descriptions etc
+
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
                 nameLong=None, save=False, nProc=1, filterTypes='diskring', doStackedMap=False,
                 doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
@@ -30,21 +33,23 @@ class ThumbStack(object):
       self.cmbUnitLatex = cmbUnitLatex
 
       # aperture photometry filters to implement
-      if filterTypes=='diskring':
-         self.filterTypes = np.array(['diskring']) 
-      elif filterTypes=='disk':
-         self.filterTypes = np.array(['disk'])
-      elif filterTypes=='ring':
-         self.filterTypes = np.array(['ring'])
-      elif filterTypes=='cosdisk':
-         self.filterTypes = np.array(['cosdisk'])
-      elif filterTypes=='taudisk':
-         self.filterTypes = np.array(['taudisk'])
-      elif filterTypes=='taudiskring':
-         self.filterTypes = np.array(['taudiskring'])
-      elif filterTypes=='all':
-         self.filterTypes = np.array(['diskring', 'disk', 'ring', 'cosdisk',
-                                      'taudisk', 'taudiskring'])
+      # can specify filterTypes as a single string or a list
+      valid_filters = ['diskring', 'disk', 'ring', 'cosdisk',
+                       'taudisk', 'tauring', 'taudiskring']
+      if isinstance(filterTypes, str):
+         if filterTypes == 'all':
+            self.filterTypes = valid_filters
+         elif filterTypes in valid_filters:
+            self.filterTypes = [filterTypes]
+         else:
+            raise ValueError('Invalid filter type:',filterTypes)
+      elif isinstance(filterTypes, list):
+         if all([(filter in valid_filters) for filter in filterTypes]):
+            self.filterTypes = filterTypes
+         else:
+            raise ValueError('Invalid filter type(s):',filterTypes)
+      else:
+         raise ValueError('Invalid filter type(s):',filterTypes)
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
@@ -90,14 +95,15 @@ class ThumbStack(object):
          os.makedirs(self.pathTestFig)
 
       print("- Thumbstack: "+str(self.name))
-      
+
+      # TODO: set up runEndToEnd boolean and function to run all these outside of the constructor
       self.loadAPRadii()
       self.loadMMaxBins(test=test)
-      
+
       if save:
          self.saveOverlapFlag(nProc=self.nProc)
       self.loadOverlapFlag()
-      
+
       if save:
          self.saveFiltering(nProc=self.nProc, test=test)
       self.loadFiltering()
@@ -232,7 +238,7 @@ class ThumbStack(object):
       tStart = time()
 #       with sharedmem.MapReduce(np=nProc) as pool:
 #          overlapFlag = np.array(pool.map(foverlap, list(range(self.Catalog.nObj))))
-      overlapFlag = np.array(list(map(foverlap, list(range(self.Catalog.nObj)))))
+      overlapFlag = np.array([foverlap(iObj) for iObj in range(self.Catalog.nObj)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
 #       print(self.Catalog.RA[0])
@@ -435,8 +441,6 @@ class ThumbStack(object):
          # filter area just saved for debugging/logging
          filtArea = diskArea
       elif (filterType=='disk') or (filterType=='taudisk'):
-         # disk filter [dimensionless]
-         inDisk = 1.*(radius<=r0)
          filterW = inDisk
          filtArea = diskArea
       elif (filterType=='ring') or (filterType=='tauring'):
@@ -545,8 +549,7 @@ class ThumbStack(object):
       filtMask = {}
       filtHitNoiseStdDev = {} 
       filtArea = {}
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
          # create arrays of filter values for the given object
          filtMap[filterType] = np.zeros(self.nRAp)
          filtMask[filterType] = np.zeros(self.nRAp)
@@ -567,9 +570,7 @@ class ThumbStack(object):
          # extract postage stamp around it
          opos, stampMap, stampMask, stampHit, stampMap2 = self.extractStamp(ra, dec, test=test)
          
-         for iFilterType in range(len(self.filterTypes)):
-            filterType = self.filterTypes[iFilterType]
-
+         for filterType in self.filterTypes:
             # loop over the radii for the AP filter
             for iRAp in range(self.nRAp):
                ## disk radius in comoving Mpc/h
@@ -595,8 +596,7 @@ class ThumbStack(object):
          fig=plt.figure(0)
          ax=fig.add_subplot(111)
          #
-         for iFilterType in range(len(self.filterTypes)):
-            filterType = self.filterTypes[iFilterType]
+         for filterType in self.filterTypes:
             ax.plot(self.RApArcmin, filtMap[filterType])
          #
          plt.show()
@@ -609,20 +609,17 @@ class ThumbStack(object):
       
       print("Evaluate all filters on all objects")
       # loop over all objects in catalog
-#      result = np.array(map(self.analyzeObject, range(self.Catalog.nObj)))
       tStart = time()
 #       with sharedmem.MapReduce(np=nProc) as pool:
 #          f = lambda iObj: self.analyzeObject(iObj, test=False)
 #          result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
-      f = lambda iObj: self.analyzeObject(iObj, test=test)
-      result = np.array(list(map(f, list(range(self.Catalog.nObj)))))
+      result = np.array([self.analyzeObject(iObj, test=test) for iObj in range(self.Catalog.nObj)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
 
 
       # unpack and save to file
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
          filtMap = np.array([result[iObj,0][filterType][:] for iObj in range(self.Catalog.nObj)])
          filtMask = np.array([result[iObj,1][filterType][:] for iObj in range(self.Catalog.nObj)])
@@ -641,8 +638,7 @@ class ThumbStack(object):
       self.filtHitNoiseStdDev = {}
       self.filtArea = {}
 
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
          self.filtMap[filterType] = np.genfromtxt(self.pathOut+"/"+filterType+"_filtmap.txt")
          self.filtMask[filterType] = np.genfromtxt(self.pathOut+"/"+filterType+"_filtmask.txt")
          self.filtHitNoiseStdDev[filterType] = np.genfromtxt(self.pathOut+"/"+filterType+"_filtnoisestddev.txt")
@@ -812,8 +808,7 @@ class ThumbStack(object):
 
    def measureAllVarFromHitCount(self, plot=False):
       self.filtVarTrue = {}
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
          self.filtVarTrue[filterType] = self.measureVarFromHitCount(filterType, plot=plot)
 
 
@@ -884,8 +879,7 @@ class ThumbStack(object):
 
    def measureAllMeanTZBins(self, plot=False, test=False):
       self.meanT = {}
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
          print(("For "+filterType+" filter:"))
          self.meanT[filterType] = self.measureMeanTZBins(filterType, plot=plot, test=test)
 
@@ -1443,12 +1437,10 @@ class ThumbStack(object):
       print(self.name)
       print(ts2.name)
       # Compute all filter types
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
          # covariance matrices from bootstrap,
          # only for a few select estimators
-         for iEst in range(len(self.EstBootstrap)):
-            est = self.EstBootstrap[iEst]
+         for est in self.EstBootstrap:
             self.SaveCovBootstrapTwoStackedProfiles(ts2, filterType, est, nSamples=self.nSamples, nProc=min(8,self.nProc))
 
 
@@ -1498,11 +1490,9 @@ class ThumbStack(object):
 
       # loop over filter types: only matter
       # because they determine the weights in the stacked map
-      for iFilterType in range(len(filterTypes)):
-         filterType = filterTypes[iFilterType]
+      for filterType in filterTypes:
          # Estimators (tSZ, kSZ, various weightings...)
-         for iEst in range(len(Est)):
-            est = Est[iEst]
+         for est in Est:
             print("compute stacked map:", filterType, est)
             stackedMap = self.computeStackedProfile(filterType, est, iBootstrap=None, iVShuffle=None, tTh='', stackedMap=True)
 
@@ -1532,16 +1522,14 @@ class ThumbStack(object):
       data[:,0] = self.RApArcmin # [arcmin]
       
       # Compute all filter types and estimators
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
          # check AP filter histograms
 #         self.plotFilterHistograms(filterType)
 
 
          # Estimators (tSZ, kSZ, various weightings...)
-         for iEst in range(len(self.Est)):
-            est = self.Est[iEst]
+         for est in self.Est:
             # measured stacked profile
             data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, test=test) # [map unit * sr]
             np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_measured.txt", data)
@@ -1557,24 +1545,20 @@ class ThumbStack(object):
          # covariance matrices from bootstrap,
          # only for a few select estimators
          if self.doBootstrap: 
-            for iEst in range(len(self.EstBootstrap)):
-               est = self.EstBootstrap[iEst]
+            for est in self.EstBootstrap:
                self.SaveCovBootstrapStackedProfile(filterType, est, nSamples=self.nSamples, nProc=self.nProc)
 
          # covariance matrices from shuffling velocities,
          # for ksz only
          if self.doVShuffle:
-            for iEst in range(len(self.EstVShuffle)):
-               est = self.EstVShuffle[iEst]
+            for est in self.estVShuffle:
                self.SaveCovVShuffleStackedProfile(filterType, est, nSamples=self.nSamples, nProc=self.nProc)
 
 
       # Stacked profiles in mass bins, to check for contamination
       if self.doMBins:
-         for iFilterType in range(len(self.filterTypes)):
-            filterType = self.filterTypes[iFilterType]
-            for iEst in range(len(self.EstMBins)):
-               est = self.EstMBins[iEst]
+         for filterType in self.filterTypes:
+            for est in self.EstMBins:
                data = np.zeros((self.nRAp, 2*self.nMMax+1))
                data[:,0] = self.RApArcmin # [arcmin]
                dataTsz = data.copy()
@@ -1605,12 +1589,10 @@ class ThumbStack(object):
       self.covBootstrap = {}
       self.covVShuffle = {}
 
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
          # all stacked profiles
-         for iEst in range(len(self.Est)):
-            est = self.Est[iEst]
+         for est in self.Est:
             # measured stacked profile
             data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_measured.txt")
             self.stackedProfile[filterType+"_"+est] = data[:,1]
@@ -1627,8 +1609,7 @@ class ThumbStack(object):
          # Null tests from shuffling velocities,
          # for ksz only
          if self.doVShuffle:
-            for iEst in range(len(self.EstVShuffle)):
-               est = self.EstVShuffle[iEst]
+            for est in self.estVShuffle:
                # null test from shuffling the velocities
                data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_vshufflemean.txt")
                self.stackedProfile[filterType+"_"+est+"_vshufflemean"] = data[:,1]
@@ -1638,8 +1619,7 @@ class ThumbStack(object):
 
          # stacked profiles in mass bins
          if self.doMBins:
-            for iEst in range(len(self.EstMBins)):
-               est = self.EstMBins[iEst]
+            for est in self.EstMBins:
 
                # measured stacked profile
                data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_mmax_measured.txt")
@@ -1660,15 +1640,13 @@ class ThumbStack(object):
          # covariance matrices from bootstrap,
          # only for a few select estimators
          if self.doBootstrap:
-            for iEst in range(len(self.EstBootstrap)):
-               est = self.EstBootstrap[iEst]
+            for est in self.EstBootstrap:
                self.covBootstrap[filterType+"_"+est] = np.genfromtxt(self.pathOut+"/cov_"+filterType+"_"+est+"_bootstrap.txt")
          
          # covariance matrices from shuffling velocities,
          # for ksz only
          if self.doVShuffle:
-            for iEst in range(len(self.EstVShuffle)):
-               est = self.EstVShuffle[iEst]
+            for est in self.estVShuffle:
                self.covVShuffle[filterType+"_"+est] = np.genfromtxt(self.pathOut+"/cov_"+filterType+"_"+est+"_vshuffle.txt")
 
 
@@ -1698,8 +1676,7 @@ class ThumbStack(object):
       #
       #colors = ['r', 'g', 'b', 'm', 'c']
       lineStyles = ['-', '--', '-.', ':']
-      for iEst in range(len(Est)):
-         est = Est[iEst]
+      for est in Est:
          #c = colors[iEst%len(colors)]
 
          for iTs in range(len(tsArr)):
@@ -1735,8 +1712,7 @@ class ThumbStack(object):
       #
       colors = ['r', 'g', 'b', 'm', 'c']
       lineStyles = ['-', '--', '-.', ':']
-      for iEst in range(len(Est)):
-         est = Est[iEst]
+      for iEst, est in enumerate(self.Est):
          c = colors[iEst%len(colors)]
 
          for iTs in range(len(tsArr)):
@@ -1765,30 +1741,27 @@ class ThumbStack(object):
 
    def plotAllStackedProfiles(self):
       print("- plot all stacked profiles")
-      
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+
+      for filterType in self.filterTypes:
          # all stacked profiles
-         for iEst in range(len(self.Est)):
-            est = self.Est[iEst]
-            self.plotStackedProfile(filterType, [est], name=filterType+"_"+est)
+         for est in self.Est:
+            self.plotStackedProfile(filterType, [est], name=filterType+"_"+est, theory=False)
 
          # stacked profiles in mass bins
          if self.doMBins:
             self.plotTszKszContaminationMMax()
 
-            for iEst in range(len(self.EstMBins)):
-               est = self.EstMBins[iEst]
+            for est in self.EstMBins:
                # measured stacked profiles
                estArr = [est+"_mmax"+str(iMMax) for iMMax in range(self.nMMax)] + [est]
                self.plotStackedProfile(filterType, estArr, name=filterType+"_"+est+"_mmax", theory=False, legend=False)
-#               # expected from tSZ
-#               estArr = [est+"_mmax"+str(iMMax)+"_theory_tsz" for iMMax in range(self.nMMax)] + [est]
-#               self.plotStackedProfile(filterType, estArr, name=filterType+"_"+est+"_mmax_theory_tsz", theory=False, legend=False)
-#               # expected from kSZ
-#               estArr = [est+"_mmax"+str(iMMax)+"_theory_ksz" for iMMax in range(self.nMMax)] + [est]
-#               self.plotStackedProfile(filterType, estArr, name=filterType+"_"+est+"_mmax_theory_ksz", theory=False, legend=False)
-
+               # expected from tSZ
+               estArr = [est+"_mmax"+str(iMMax)+"_theory_tsz" for iMMax in range(self.nMMax)] + [est]
+               self.plotStackedProfile(filterType, estArr, name=filterType+"_"+est+"_mmax_theory_tsz", theory=False, legend=False)
+               # expected from kSZ
+               estArr = [est+"_mmax"+str(iMMax)+"_theory_ksz" for iMMax in range(self.nMMax)] + [est]
+               self.plotStackedProfile(filterType, estArr, name=filterType+"_"+est+"_mmax_theory_ksz", theory=False, legend=False)
+ 
 
    ##################################################################################
 
@@ -1799,11 +1772,9 @@ class ThumbStack(object):
       '''
       print("Plotting contamination as a function of MMax")
 
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
-         for iEst in range(len(self.EstMBins)):
-            est = self.EstMBins[iEst]
+         for est in self.EstMBins:
 
             TszToKsz = np.zeros(self.nMMax)
             KszToTsz = np.zeros(self.nMMax)
@@ -1995,21 +1966,18 @@ class ThumbStack(object):
 
    def plotAllCov(self):
       print("- plot all covariances")
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
          # covariance matrices from bootstrap,
          # only for a few select estimators
          if self.doBootstrap:
-            for iEst in range(len(self.EstBootstrap)):
-               est = self.EstBootstrap[iEst]
+            for est in self.EstBootstrap:
                self.plotCov(self.covBootstrap[filterType+"_"+est], filterType+"_"+est+"_bootstrap")
          
          # covariance matrices from shuffling velocities,
          # for ksz only
          if self.doVShuffle:
-            for iEst in range(len(self.EstVShuffle)):
-               est = self.EstVShuffle[iEst]
+            for est in self.estVShuffle:
                self.plotCov(self.covVShuffle[filterType+"_"+est], filterType+"_"+est+"_vshuffle")
 
 
@@ -2107,13 +2075,11 @@ class ThumbStack(object):
       print(ts2.name)
       
       # Compute all filter types
-      for iFilterType in range(len(self.filterTypes)):
-         filterType = self.filterTypes[iFilterType]
+      for filterType in self.filterTypes:
 
          # covariance matrices from bootstrap,
          # only for a few select estimators
-         for iEst in range(len(self.EstBootstrap)):
-            est = self.EstBootstrap[iEst]
+         for est in self.EstBootstrap:
 
             # read cov from file
             pathCov = self.pathOut+"/cov_"+filterType+"_"+est+"_joint_"+self.name+"_"+ts2.name+"_bootstrap.txt"
