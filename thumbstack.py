@@ -495,7 +495,7 @@ class ThumbStack(object):
       #print "filtHitNoiseStdDev = ", filtHitNoiseStdDev
       if np.isnan(filtHitNoiseStdDev):
          print("filtHitNoiseStdDev is nan")
-
+      # TODO: make test for tauring values, since these don't make sense for that filter
       if test:
          print("AP filter with disk radius =", r0 * (180.*60./np.pi), "arcmin")
          # count nb of pixels where filter is strictly positive
@@ -976,6 +976,11 @@ class ThumbStack(object):
       # halo masses
       m = ts.Catalog.Mvir[mask]
 
+      if test:
+         print('T filtMap:', t)
+         print('s2Full:', s2Full)
+         print('Tlarge:', Tlarge)
+
       if iBootstrap is not None:
          # make sure each resample is independent,
          # and make the resampling reproducible
@@ -1074,6 +1079,9 @@ class ThumbStack(object):
       if not stackedMap:
          stack = norm * np.sum(t * weights, axis=0)
          sStack = norm * np.sqrt(np.sum(s2Full * weights**2, axis=0))
+         if test:
+             print('stack:', stack)
+             print('sStack:', sStack)
          return stack, sStack
 
 
@@ -1112,7 +1120,7 @@ class ThumbStack(object):
                   dec = ts.Catalog.DEC[iObj] # in deg
                   z = ts.Catalog.Z[iObj]
                   # extract postage stamp around it
-                  opos, stampMap, stampMask, stampHit = ts.extractStamp(ra, dec, test=False)
+                  opos, stampMap, stampMask, stampHit, stampMap2= ts.extractStamp(ra, dec, test=False)
                   resMap += stampMap * weightsLong[iObj]
             return resMap
 
@@ -2108,7 +2116,7 @@ class ThumbStack(object):
          result = (1. - np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2))**2
       elif (filterType=='disk') or (filterType=='taudisk'):
          result = 1. - np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2)
-      elif filterType=='ring':
+      elif (filterType=='ring') or (filterType=='tauring'):
          result = np.exp(-0.5*self.RApArcmin**2/sigma_cluster**2) - np.exp(-0.5*(self.RApArcmin*np.sqrt(2.))**2/sigma_cluster**2)
       return result
 
