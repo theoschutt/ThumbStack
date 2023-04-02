@@ -1,21 +1,22 @@
+import importlib
 import universe
-reload(universe)
+importlib.reload(universe)
 from universe import *
 
 import mass_conversion
-reload(mass_conversion)
+importlib.reload(mass_conversion)
 from mass_conversion import *
 
 import catalog
-reload(catalog)
+importlib.reload(catalog)
 from catalog import *
 
 import thumbstack
-reload(thumbstack)
+importlib.reload(thumbstack)
 from thumbstack import *
 
 import cmb
-reload(cmb)
+importlib.reload(cmb)
 from cmb import *
 
 # running on cori
@@ -25,7 +26,7 @@ from cmb import *
 
 ##################################################################################
 
-nProc = 32 # 1 haswell node on cori
+nProc = 1 # 1 haswell node on cori
 
 ##################################################################################
 ##################################################################################
@@ -52,8 +53,7 @@ massConversion = MassConversionKravtsov14()
 # combined catalog
 #cmassMariana = cmassSMariana.copy(name="cmass_mariana", nameLong="CMASS M")
 #cmassMariana.addCatalog(cmassNMariana, save=True)
-#cmassMariana = Catalog(u, massConversion, name="cmass_mariana", nameLong="CMASS M", save=False)
-
+#cmassMariana = Catalog(u, massConversion, name="cmass_mariana", nameLong="CMASS M", pathInCatalog='./output/catalog/cmass_mariana/catalog.txt', save=True)
 
 # Shuffle velocities to kill the 2-halo term
 #cmassMarianaVShuffle = cmassMariana.copy(name="cmass_mariana_vshuffle", nameLong="CMASS M Vshuffle")
@@ -63,8 +63,8 @@ massConversion = MassConversionKravtsov14()
 
 # extract a small square patch with RA in [0., 5.] and DEC in [-5., 0.],
 # to speed up the tests: reduces nObj from 777202 to 2172.
-#I = np.where((0.<=cmassMarianaVShuffle.RA) * (cmassMarianaVShuffle.RA<=5.) * (-5.<=cmassMarianaVShuffle.DEC) * (cmassMarianaVShuffle.DEC<=0.))
-#cmassMarianaVShuffle.extractCatalog(I, name="cmass_mariana_vshuffle_small", nameLong="CMASS M Vshuffle small")
+#I = np.nonzero((0.<=cmassMarianaVShuffle.RA) * (cmassMarianaVShuffle.RA<=5.) * (-5.<=cmassMarianaVShuffle.DEC) * (cmassMarianaVShuffle.DEC<=0.))[0]
+#cmassMarianaVShuffleSmall = cmassMarianaVShuffle.extractCatalog(I, name="cmass_mariana_vshuffle_small", nameLong="CMASS M Vshuffle small")
 cmassMarianaVShuffleSmall = Catalog(u, massConversion, name="cmass_mariana_vshuffle_small", nameLong="CMASS M Vshuffle small")
 
 
@@ -109,12 +109,12 @@ boxMask = enmap.ones(shape, wcs=wcs)
 
 
 # create mock map with point sources and Gaussian profiles with sigma=1.5'
-#cmassMarianaVShuffleSmall.generateMockMaps(boxMask, sigma=1.5, test=False)
+cmassMarianaVShuffleSmall.generateMockMaps(boxMask, sigma=1.5, test=False)
 
 # check that the mock map has non-zero pixels
-#pathMap = cmassMarianaVShuffleSmall.pathOut + "mock_count_gauss_car.fits"
-#boxMap = enmap.read_map(pathMap)
-#print np.sum(np.abs(boxMap))
+pathMap = cmassMarianaVShuffleSmall.pathOut + "/mock_count_gauss_car.fits"
+boxMap = enmap.read_map(pathMap)
+print(np.sum(np.abs(boxMap)))
 
 
 ###################################################################################
@@ -129,47 +129,48 @@ cmb1_4 = StageIVCMB(beam=1.4, noise=30., lMin=1., lMaxT=1.e5, lMaxP=1.e5, atm=Fa
 ###################################################################################
 
 import thumbstack
-reload(thumbstack)
 from thumbstack import *
 
-save = False
+save = True 
 
 # Do it on mocks with shuffled velocities
-pathMap = cmassMarianaVShuffleSmall.pathOut + "mock_vel_dirac_car.fits"
+pathMap = cmassMarianaVShuffleSmall.pathOut + "/mock_vel_dirac_car.fits"
 boxMap = enmap.read_map(pathMap)
 name = cmassMarianaVShuffleSmall.name + "_test_endtoend_vel_dirac_carmanu"
 #tsVelDiracVShuffleSmall = ThumbStack(u, cmassMarianaVShuffleSmall, boxMap, boxMask, cmbHit=None, name=name, nameLong=None, save=save, nProc=nProc, filterTypes='all')
 tsVelDiracVShuffleSmall = ThumbStack(u, cmassMarianaVShuffleSmall, boxMap, boxMask, cmbHit=None, name=name, nameLong=None, save=save, nProc=nProc, filterTypes='diskring', doMBins=True)
 
-ts = tsVelDiracVShuffleSmall
+# ts = tsVelDiracVShuffleSmall
+# 
+# ts.plotTszKszContaminationMMax()
+# mMax = 1.e15
+# prof, sprof  = ts.computeStackedProfile('diskring', 'ksz_varweight', mVir=[1.e6, mMax]) # [map unit * sr]
+# 
+# 
+# 
+# mask = ts.catalogMask()
+# 
+# filterType= 'diskring'
+# 
+# # ts has shape (nObj, nRAp)
+# # sigmas has shape  nRAp
+# sigmas = np.std(ts.filtMap[filterType][mask,:], axis=0)
+# 
+# # find the cut for the typical number of objects
+# nObj = np.sum(mask)
+# f = lambda nSigmas: nObj * special.erfc(nSigmas / np.sqrt(2.)) - special.erfc(5. / np.sqrt(2.))
+# nSigmasCut = optimize.brentq(f , 0., 1.e2)
+# 
+# # shape is (nObj, nRAp)
+# newMask = (np.abs(ts.filtMap[filterType][mask,:]) <= nSigmasCut * sigmas[np.newaxis,:])
+# # take the intersection of the masks
+# newMask = np.prod(newMask, axis=1)
+# 
+# ###################################################################################
+# ###################################################################################
+# # test removing the mean temperature in redshift bins
+# 
+# ts.measureAllMeanTZBins(plot=True, test=False)
 
-#ts.plotTszKszContaminationMMax()
-#mMax = 1.e15
-#prof, sprof  = ts.computeStackedProfile('diskring', 'ksz_varweight', mVir=[1.e6, mMax]) # [map unit * sr]
 
-
-
-#mask = ts.catalogMask()
-#
-#filterType= 'diskring'
-#
-## ts has shape (nObj, nRAp)
-## sigmas has shape  nRAp
-#sigmas = np.std(ts.filtMap[filterType][mask,:], axis=0)
-#
-## find the cut for the typical number of objects
-#nObj = np.sum(mask)
-#f = lambda nSigmas: nObj * special.erfc(nSigmas / np.sqrt(2.)) - special.erfc(5. / np.sqrt(2.))
-#nSigmasCut = optimize.brentq(f , 0., 1.e2)
-#
-## shape is (nObj, nRAp)
-#newMask = (np.abs(ts.filtMap[filterType][mask,:]) <= nSigmasCut * sigmas[np.newaxis,:])
-## take the intersection of the masks
-#newMask = np.prod(newMask, axis=1)
-
-###################################################################################
-###################################################################################
-# test removing the mean temperature in redshift bins
-
-#ts.measureAllMeanTZBins(plot=True, test=False)
 

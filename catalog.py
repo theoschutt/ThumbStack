@@ -406,7 +406,6 @@ class Catalog(object):
       self.integratedML = data[:nObj, 25] # [sr]
 
 
-
    ##################################################################################
    ##################################################################################
 
@@ -1110,10 +1109,10 @@ class Catalog(object):
 
       # save the maps
       print("Saving maps to:")
-      print(self.pathOut+"mock_count_dirac_car.fits")
-      print(self.pathOut+"mock_vel_dirac_car.fits")
-      enmap.write_map(self.pathOut+"mock_count_dirac_car.fits", countDirac)
-      enmap.write_map(self.pathOut+"mock_vel_dirac_car.fits", velDirac)
+      print(self.pathOut+"/mock_count_dirac_car.fits")
+      print(self.pathOut+"/mock_vel_dirac_car.fits")
+      enmap.write_map(self.pathOut+"/mock_count_dirac_car.fits", countDirac)
+      enmap.write_map(self.pathOut+"/mock_vel_dirac_car.fits", velDirac)
       
 
       # For the Gaussian profiles, use pixell.pointsrcs.sim_srcs,
@@ -1153,10 +1152,10 @@ class Catalog(object):
          velGauss /= np.std(self.vR / 3.e5)
          # save the maps
          print("Saving maps to:")
-         print(self.pathOut+"mock_count_gauss_car.fits")
-         print(self.pathOut+"mock_vel_gauss_car.fits")
-         enmap.write_map(self.pathOut+"mock_count_gauss_car.fits", countGauss)
-         enmap.write_map(self.pathOut+"mock_vel_gauss_car.fits", velGauss)
+         print(self.pathOut+"/mock_count_gauss_car.fits")
+         print(self.pathOut+"/mock_vel_gauss_car.fits")
+         enmap.write_map(self.pathOut+"/mock_count_gauss_car.fits", countGauss)
+         enmap.write_map(self.pathOut+"/mock_vel_gauss_car.fits", velGauss)
 
       tStop = time()
       print(("Took "+str((tStop-tStart)/60.)+" min"))
