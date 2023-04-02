@@ -12,9 +12,10 @@ class ThumbStack(object):
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
                 nameLong=None, save=False, nProc=1, filterTypes='diskring', doStackedMap=False,
                 doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
-                cmbUnitLatex=r'$\mu$K', workDir='.', test=False):
+                cmbUnitLatex=r'$\mu$K', workDir='.', test=False, runEndToEnd=True):
       
       self.nProc = nProc
+      self.save = save
       self.U = U
       self.Catalog = Catalog
       self.name = name
@@ -26,6 +27,7 @@ class ThumbStack(object):
       self.cmbMap2 = cmbMap2
       self.cmbMask = cmbMask
       self.cmbHit = cmbHit
+      self.doStackedMap = doStackedMap
       self.doMBins = doMBins
       self.doVShuffle = doVShuffle
       self.doBootstrap = doBootstrap
@@ -53,6 +55,7 @@ class ThumbStack(object):
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
+      # TODO: make all this not hard-coded
       if self.cmbHit is not None:
          self.Est = ['tsz_uniformweight', 'tsz_varweight']   #['tsz_uniformweight', 'tsz_hitweight', 'tsz_varweight', 'ksz_uniformweight', 'ksz_hitweight', 'ksz_varweight', 'ksz_massvarweight']
          self.EstBootstrap = ['tsz_uniformweight', 'tsz_varweight']  #['tsz_varweight', 'ksz_varweight']
@@ -97,46 +100,86 @@ class ThumbStack(object):
       print("- Thumbstack: "+str(self.name))
 
       # TODO: set up runEndToEnd boolean and function to run all these outside of the constructor
+      if runEndToEnd:
+         self.runEndToEnd(test=test)
+
+#      self.loadAPRadii()
+#      self.loadMMaxBins(test=test)
+#
+#      if save:
+#         self.saveOverlapFlag(nProc=self.nProc)
+#      self.loadOverlapFlag()
+#
+#      if save:
+#         self.saveFiltering(nProc=self.nProc, test=test)
+#      self.loadFiltering()
+#
+#      self.measureAllVarFromHitCount(plot=save)
+#
+##      self.measureAllMeanTZBins(plot=save, test=False)
+#
+#
+#      if save:
+#         self.saveAllStackedProfiles(test=test)
+#      self.loadAllStackedProfiles()
+#
+#      if save:
+#         self.plotAllStackedProfiles()
+#         self.plotAllCov()
+#         self.computeAllSnr()
+#
+#      #if save:
+#      if True: #skipping for now for tau estimator dev
+#         if doStackedMap:
+#            # save all stacked maps
+#            # self.saveAllStackedMaps()
+#            # save only the stacked maps for
+#            # the best tsz and ksz estimators,
+#            # and for the diskring weighting
+#            #self.saveAllStackedMaps(filterTypes=['diskring'], Est=['tsz_varweight', 'ksz_varweight'])
+#            self.saveAllStackedMaps(filterTypes=self.filterTypes, Est=self.Est)
+
+
+
+   ##################################################################################
+   ##################################################################################
+
+   def runEndToEnd(self, test):
       self.loadAPRadii()
       self.loadMMaxBins(test=test)
 
-      if save:
+      if self.save:
          self.saveOverlapFlag(nProc=self.nProc)
       self.loadOverlapFlag()
 
-      if save:
+      if self.save:
          self.saveFiltering(nProc=self.nProc, test=test)
       self.loadFiltering()
       
-      self.measureAllVarFromHitCount(plot=save)
+      self.measureAllVarFromHitCount(plot=self.save)
       
 #      self.measureAllMeanTZBins(plot=save, test=False)
 
 
-      if save:
+      if self.save:
          self.saveAllStackedProfiles(test=test)
       self.loadAllStackedProfiles()
 
-      if save:
+      if self.save:
          self.plotAllStackedProfiles()
          self.plotAllCov()
          self.computeAllSnr()
 
       #if save:
-      if True: #skipping for now for tau estimator dev
-         if doStackedMap:
-            # save all stacked maps
-            # self.saveAllStackedMaps()
-            # save only the stacked maps for
-            # the best tsz and ksz estimators,
-            # and for the diskring weighting
-            #self.saveAllStackedMaps(filterTypes=['diskring'], Est=['tsz_varweight', 'ksz_varweight'])
-            self.saveAllStackedMaps(filterTypes=self.filterTypes, Est=self.Est)
+      if self.doStackedMap:
+         # save all stacked maps
+         # self.saveAllStackedMaps()
+         # save only the stacked maps for
+         # the best tsz and ksz estimators,
+         # and for the diskring weighting
+         #self.saveAllStackedMaps(filterTypes=['diskring'], Est=['tsz_varweight', 'ksz_varweight'])
+         self.saveAllStackedMaps(filterTypes=self.filterTypes, Est=self.Est)
 
-
-
-   ##################################################################################
-   ##################################################################################
 
    def loadAPRadii(self):
       # radii to use for AP filter: comoving Mpc/h
