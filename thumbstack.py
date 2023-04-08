@@ -1118,11 +1118,11 @@ class ThumbStack(object):
          weights = m[:,np.newaxis] * v[:,np.newaxis] / s2Full
          #norm = np.mean(m) * sVTrue / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
          norm = np.mean(m) * np.std(v) / ts.Catalog.rV / np.sum(m[:,np.newaxis]**2 * v[:,np.newaxis]**2 / s2Full, axis=0)
-      # tau: "weighted" by mean large scale temperature
+      # tau: weighted by mean large scale temperature
       elif est=='tau_ti_uniformweight':
          weights = -Tlarge
          norm = 1./np.sum(Tlarge**2, axis=0)
-      # tau: "weighted" by sign of large scale temperature
+      # tau: weighted by sign of large scale temperature
       elif est=='tau_sgn_uniformweight':
          weights = -np.sign(Tlarge)
          norm = 1./np.sum(np.abs(Tlarge), axis=0)
