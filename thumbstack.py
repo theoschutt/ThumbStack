@@ -538,7 +538,6 @@ class ThumbStack(object):
       #print "filtHitNoiseStdDev = ", filtHitNoiseStdDev
       if np.isnan(filtHitNoiseStdDev):
          print("filtHitNoiseStdDev is nan")
-      # TODO: make test for tauring values, since these don't make sense for that filter
       if test:
          print("AP filter with disk radius =", r0 * (180.*60./np.pi), "arcmin")
          # count nb of pixels where filter is strictly positive
@@ -547,17 +546,36 @@ class ThumbStack(object):
          print("= nb of pixels where filter=0: "+str(len(np.where(filterW==0.)[0])))
          print("+ nb of pixels where filter>0: "+str(len(np.where(filterW>0.)[0])))
          print("+ nb of pixels where filter<0: "+str(len(np.where(filterW<0.)[0])))
-         print(("- disk area: "+str(diskArea)+" sr, ie "
-                +str(diskArea * (180.*60./np.pi)**2)+"arcmin^2"))
-         print(("  (from r0, expect "+str(np.pi*r0**2)+" sr, ie "
-                +str(np.pi*r0**2 * (180.*60./np.pi)**2)+"arcmin^2)"))
-         print("- disk-ring filter sums over pixels to "+str(np.sum(filterW)))
-         print("  (should be 0; compared to "+str(len(filterW.flatten()))+")")
-         print("- filter on unit disk: "+str(np.sum(pixArea * filterW * inDisk)))
-         print("  (should be disk area in sr: "+str(diskArea)+")")
-         print("- filter on map: "+str(filtMap))
-         print("- filter on mask: "+str(filtMask))
-         print("- filter on inverse hit: "+str(filtHitNoiseStdDev))
+
+         if (filterType == 'ring') or (filterType == 'tauring'):
+            print(("- ring area: "+str(ringArea)+" sr, ie "
+                   +str(ringArea * (180.*60./np.pi)**2)+"arcmin^2"))
+            ringAreaAnalytic = np.pi*(r1**2 - r0**2)
+            print(("  (from r0 and r1, expect "+str(ringAreaAnalytic)+" sr, ie "
+                   +str(ringAreaAnalytic * (180.*60./np.pi)**2)+"arcmin^2)"))
+            print("- ring filter sums over pixels to "+str(np.sum(filterW)))
+            print("  (should be: %f)"%np.sum(inRing))
+            print("- filter on unit ring: ", np.sum(pixArea * filterW * inRing))
+            print("  (should be ring area in sr: "+str(ringArea)+")")
+            print("- filter on map [map unit * sr]:", filtMap)
+            print("- filter on map [map unit * arcmin^2]:", filtMap * (180.*60/np.pi)**2)
+            print(" filter on map / area [map unit]:", filtMap / ringArea)
+            print("- filter on mask: "+str(filtMask))
+            print("- filter on inverse hit (or Tlarge): "+str(filtHitNoiseStdDev))
+
+         elif (filterType=='diskring') or (filterType=='taudiskring'):
+            print(("- disk area: "+str(diskArea)+" sr, ie "
+                   +str(diskArea * (180.*60./np.pi)**2)+"arcmin^2"))
+            print(("  (from r0, expect "+str(np.pi*r0**2)+" sr, ie "
+                   +str(np.pi*r0**2 * (180.*60./np.pi)**2)+"arcmin^2)"))
+            print("- disk-ring filter sums over pixels to "+str(np.sum(filterW)))
+            print("  (should be 0; compared to "+str(len(filterW.flatten()))+")")
+            print("- filter on unit disk: "+str(np.sum(pixArea * filterW * inDisk)))
+            print("  (should be disk area in sr: "+str(diskArea)+")")
+            print("- filter on map [map unit * sr]:", filtMap)
+            print("- filter on map [map unit * arcmin^2]:", filtMap * (180.*60/np.pi)**2)
+            print("- filter on mask: "+str(filtMask))
+            print("- filter on inverse hit: "+str(filtHitNoiseStdDev))
          print("- plot the filter")
          filterMap = stampMap.copy()
          filterMap[:,:] = filterW.copy()
