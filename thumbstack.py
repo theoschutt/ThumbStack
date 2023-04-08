@@ -99,7 +99,6 @@ class ThumbStack(object):
 
       print("- Thumbstack: "+str(self.name))
 
-      # TODO: set up runEndToEnd boolean and function to run all these outside of the constructor
       if runEndToEnd:
          self.runEndToEnd(test=test)
 
@@ -410,9 +409,134 @@ class ThumbStack(object):
 
       return opos, stampMap, stampMask, stampHit, stampMap2
 
-
-
    ##################################################################################
+
+   def buildStack(self, save=True, test=False):
+      """Extracts a square stamp around each catalog object that overlaps
+      with the map. Adds this stamp to a list. Creates a 3D array from this
+      list, with shape (nObj_overlapping, stamp_nx, stamp_ny), where
+      nObj_overlapping is the number of catalog objects overlapping the map,
+      and stamp_nx and stamp_ny are the number of pixels on each side of
+      the cutout stamp (should be square, i.e. stamp_nx = stamp_ny).
+
+      @return 3d array representing stack of cutout stamps.
+      """
+      # want to know how many objects overlap in order to allocate
+      # memory for an array
+      try:
+         self.overlapFlag[iObj]
+      except AttributeError:
+          try:
+             self.loadOverlapFlag()
+          except FileNotFoundError:
+             self.saveOverlapFlag()
+             self.loadOverlapFlag()
+      # TODO: get enmap.geometry here so we can set the shape of array 
+      # stack_arr = np.zeros((np.count_nonzero(self.overlapFlag), stamp_nx, stamp_ny))
+
+      stack_list = []
+      mask_list = []
+      hit_list = []
+      stack2_list = []
+
+      for iObj in range(self.Catalog.nObj):
+         try:
+             self.overlapFlag[iObj]
+         except AttributeError:
+             try:
+                self.loadOverlapFlag()
+             except FileNotFoundError:
+                self.saveOverlapFlag()
+                self.loadOverlapFlag()
+         if self.overlapFlag[iObj]:
+            # Object coordinates
+            ra = self.Catalog.RA[iObj]   # in deg
+            dec = self.Catalog.DEC[iObj]   # in deg
+            z = self.Catalog.Z[iObj]
+            vTheta = self.Catalog.vTheta[iObj]   # [km/s]
+            vPhi = self.Catalog.vPhi[iObj]   # [km/s]
+            # choose postage stamp size to fit the largest ring
+            dArcmin = np.ceil(2. * self.rApMaxArcmin * np.sqrt(2.))
+            dDeg = dArcmin / 60.
+            # extract postage stamp around it
+            opos, stampMap, stampMask, stampHit, stampMap2 = self.extractStamp(ra, dec, test=test)
+            # add stamp info to corresponding lists
+            stack_list.append(stampMap)
+            mask_list.append(stampMask)
+            hit_list.append(stampHit)
+            if stampMap2 is not None:
+               stack2_list.append(stampMap2)
+
+      # now convert lists to arrays
+      # NB: this method uses twice the memory vs. making an array ahead of time
+      # setting to private attributes so they are only accessed as
+      # read-only attributes by the user (in properties below)
+      self._opos = opos # same for all stamps
+      self._stamp_stack = np.array(stamp_list)
+      self._mask_stack = np.array(mask_list)
+      self._hit_stack = np.array(hit_list)
+      self._stamp2_stack = np.array(stamp2_list)
+
+      if save:
+         np.save(self.pathOut + '/stamp_stack', self._stamp_stack)
+         np.save(self.pathOut + '/mask_stack', self._mask_stack)
+         np.save(self.pathOut + '/hit_stack', self._hit_stack)
+         np.save(self.pathOut + '/stamp2_stack', self._stamp2_stack)
+
+   # These take a lot of compute time. Let's avoid overwriting them
+   # by making them read-only. 
+   @property
+   def stamp_stack(self): return self._stamp_stack
+   @property
+   def mask_stack(self): return self._mask_stack
+   @property
+   def hit_stack(self): return self._hit_stack
+   @property
+   def stamp2_stack(self): return self._stamp2_stack
+   
+   ##################################################################################
+
+   def apply_AP_filter(self, filterType, iAperture):
+      """Applies the specified aperture photometry filter on the stacks.
+      The specific disk or ring is given by the index iAperture (in
+      combination with self.rAPArcmin).
+
+      Returns:
+         4 arrays, each with shape (nObj,):
+         filtered map [map unit * sr],
+         filtered mask [mask unit * sr],
+         standard deviation of noise over the filtered map [1/sqrt(hit unit) * sr], ie [std dev * sr] if [hit map] = inverse var OR [muK] if using tau-related estimator,
+         area of the filter [sr]
+      """
+      pass
+
+
+   def apply_all_AP_filters(self, filterTypes, nApertures, save=True):
+      """For each filterType and filter aperture, broadcasts the aperture
+      filter across all stamps in the stack.
+      
+      Returns:
+         A dictionary indexed by filterType and aperture index, containing
+         the filtered map, filtered mask, noise of the map over the filter,
+         and filter area for each aperture over each stamp.
+      """
+      filtMap = {}
+      filtMask = {}
+      filtHitNoiseStdDev = {}
+      filtArea = {}
+
+      for filterType in filterTypes:
+         for iAperture in nApertures:
+            (filtMap[filterType][iAperture],
+             filtMask[filterType][iAperture],
+             filtHitNoiseStdDev[filterType][iAperture],
+             filtArea[filterType][iAperture]) = apply_AP_filter(
+                                              filterType, iAperture)
+         if save: 
+            np.savetxt(self.pathOut+"/"+filterType+"_filtmap.txt", filtMap)
+            np.savetxt(self.pathOut+"/"+filterType+"_filtmask.txt", filtMask)
+            np.savetxt(self.pathOut+"/"+filterType+"_filtnoisestddev.txt", filtHitNoiseStdDev)
+            np.savetxt(self.pathOut+"/"+filterType+"_filtarea.txt", filtArea)
 
 
    def aperturePhotometryFilter(self, opos, stampMap, stampMask, stampHit, iRAp,
