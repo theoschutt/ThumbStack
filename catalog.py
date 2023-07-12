@@ -1080,7 +1080,7 @@ class Catalog(object):
              if test:
                print(("Object "+str(iObj)+" overlaps"))
              # fill the pixel
-             countDirac[jY, jX] = 1.
+             countDirac[jY, jX] += 1.
              velDirac[jY, jX] = - self.vR[iObj] / 3.e5   # v_r/c  [dimless]
              # check that I filled the right pixel
              if countDirac.at(sourcecoord, prefilter=False, mask_nan=False, order=0)!=1:
@@ -1142,7 +1142,7 @@ class Catalog(object):
          countGauss /= 2. * np.pi * sigma**2 # (sigma * np.pi / (180. * 60.))**2
          velGauss /= 2. * np.pi * sigma**2   #(sigma * np.pi / (180. * 60.))**2
          # normalize the mock maps, such that:
-         # int dOmega count = 1 [muK*arcmin^2]
+         # int dOmega count= 1 [muK*arcmin^2]
          # int dOmega vel = -(v/c) / sigma(v/c) [muK*arcmin^2]
          # the reason for the vel normalization is that the kSZ estimator correlates with v/c,
          # then divides by sigma^2(v/c), then re-multiplies by sigma(v/c),
