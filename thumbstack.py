@@ -10,7 +10,7 @@ class ThumbStack(object):
 # TODO: write docstring with argument descriptions etc
 
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
-                nameLong=None, save=False, nProc=1, filterTypes='diskring', doStackedMap=False,
+                nameLong=None, save=False, nProc=1, filterTypes='diskring', estimatorTypes=['tsz_uniformweight'], doStackedMap=False,
                 doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
                 cmbUnitLatex=r'$\mu$K', workDir='.', test=False, runEndToEnd=True):
       
@@ -36,8 +36,15 @@ class ThumbStack(object):
 
       # aperture photometry filters to implement
       # can specify filterTypes as a single string or a list
-      valid_filters = ['diskring', 'disk', 'ring', 'cosdisk',
-                       'taudisk', 'tauring', 'taudiskring']
+      valid_filters = [
+         'diskring',
+         'disk',
+         'ring',
+         'cosdisk',
+         'taudisk',
+         'tauring',
+         'taudiskring'
+      ]
       if isinstance(filterTypes, str):
          if filterTypes == 'all':
             self.filterTypes = valid_filters
@@ -53,19 +60,58 @@ class ThumbStack(object):
       else:
          raise ValueError('Invalid filter type(s):',filterTypes)
 
+      # estimator(s) and weighting scheme(s) to use for stack,
+      # covariance, v shuffle cov, etc
+      # can specify estimatorTypes as a single string or a list
+      valid_estimators = [
+         'tsz_uniformweight',
+         'tsz_varweight',
+         'tsz_hitweight',
+         'ksz_uniformweight',
+         'ksz_varweight',
+         'ksz_hitweight',
+         'ksz_massvarweight',
+         'tau_ti_uniformweight',
+         'tau_sgn_uniformweight'
+      ]
+      if isinstance(estimatorTypes, str):
+         if estimatorTypes == 'all':
+            self.estimatorTypes = valid_estimators
+         elif estimatorTypes in valid_estimators:
+            self.estimatorTypes = [estimatorTypes]
+         else:
+            raise ValueError('Invalid estimator type:', estimatorTypes)
+      elif isinstance(estimatorTypes, list):
+         if all([(est in valid_estimators) for est in estimatorTypes]):
+            self.estimatorTypes = estimatorTypes
+         else:
+            raise ValueError('Invalid estimator type(s):', estimatorTypes)
+      else:
+         raise ValueError('Invalid estimator type(s):', estimatorTypes)
+
+      # TODO: Add checks to prevent invalid combos, e.g., EstVShuffle
+      # is only valid for kSZ estimators. However, doVShuffle, doMBins,
+      # etc always get checked first. So not a big problem, but leaves
+      # it up to the user not to mismatch estimator types and cov
+      # estimator methods.
+      self.Est = weightTypes
+      self.EstBootstrap = weightTypes
+      self.EstVShuffle = weightTypes
+      self.EstMBins = weightTypes
+
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
       # TODO: make all this not hard-coded
-      if self.cmbHit is not None:
-         self.Est = ['tsz_uniformweight', 'tsz_varweight']   #['tsz_uniformweight', 'tsz_hitweight', 'tsz_varweight', 'ksz_uniformweight', 'ksz_hitweight', 'ksz_varweight', 'ksz_massvarweight']
-         self.EstBootstrap = ['tsz_uniformweight', 'tsz_varweight']  #['tsz_varweight', 'ksz_varweight']
-         self.EstVShuffle = []   #['ksz_varweight']
-         self.EstMBins = ['tsz_uniformweight', 'tsz_varweight']# ['tsz_varweight', 'ksz_varweight']
-      else:
-         self.Est = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
-         self.EstBootstrap = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
-         self.EstVShuffle = []   #['ksz_uniformweight']
-         self.EstMBins = [] #['ksz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
+#      if self.cmbHit is not None:
+#         self.Est = ['tsz_uniformweight', 'tsz_varweight']   #['tsz_uniformweight', 'tsz_hitweight', 'tsz_varweight', 'ksz_uniformweight', 'ksz_hitweight', 'ksz_varweight', 'ksz_massvarweight']
+#         self.EstBootstrap = ['tsz_uniformweight', 'tsz_varweight']  #['tsz_varweight', 'ksz_varweight']
+#         self.EstVShuffle = []   #['ksz_varweight']
+#         self.EstMBins = ['tsz_uniformweight', 'tsz_varweight']# ['tsz_varweight', 'ksz_varweight']
+#      else:
+#         self.Est = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight', 'ksz_massvarweight']
+#         self.EstBootstrap = ['tau_ti_uniformweight', 'tau_sgn_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
+#         self.EstVShuffle = []   #['ksz_uniformweight']
+#         self.EstMBins = [] #['ksz_uniformweight'] #['tsz_uniformweight', 'ksz_uniformweight']
 
       # resolution of the cutout maps to be extracted
       self.resCutoutArcmin = 0.25   # [arcmin]
