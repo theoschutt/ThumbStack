@@ -425,7 +425,9 @@ class FlatMap(object):
    ###############################################################################
    # Measure power spectrum
 
-   def crossPowerSpectrum(self, dataFourier1, dataFourier2, theory=[], fsCl=None, nBins=51, lRange=None, plot=False, name="test", save=False):
+   def crossPowerSpectrum(self, dataFourier1, dataFourier2, theory=[],
+      fsCl=None, nBins=51, lRange=None, plot=False, name=None, save=False,
+      path=None):
 
       # define ell bins
       ell = self.l.flatten()
@@ -484,20 +486,28 @@ class FlatMap(object):
          if save==True:
             if name is None:
                name = self.name
-            print("saving plot to "+"./figures/lens_simulator/"+name+"_power.pdf")
-            fig.savefig("./figures/lens_simulator/"+name+"_power.pdf", bbox_inches='tight')
+            if path is None:
+                path = './%s_powspec.pdf'%name
+            pathdir = os.path.dirname(path)
+            if not os.path.exists(pathdir):
+                os.makedirs(pathdir)
+            print("Saving plot to:", path)
+            fig.savefig(path, bbox_inches='tight')
             fig.clf()
          else:
             plt.show()
-      
+
       return lCen, Cl, sCl
 
 
 
-   def powerSpectrum(self, dataFourier=None, theory=[], fsCl=None, nBins=51, lRange=None, plot=False, name="test", save=False):
+   def powerSpectrum(self, dataFourier=None, theory=[], fsCl=None, nBins=51,
+      lRange=None, plot=False, name=None, save=False, path=None):
       if dataFourier is None:
          dataFourier = self.dataFourier.copy()
-      return self.crossPowerSpectrum(dataFourier1=dataFourier, dataFourier2=dataFourier, theory=theory, fsCl=fsCl, nBins=nBins, lRange=lRange, plot=plot, name=name, save=save)
+      return self.crossPowerSpectrum(dataFourier1=dataFourier,
+         dataFourier2=dataFourier, theory=theory, fsCl=fsCl, nBins=nBins,
+         lRange=lRange, plot=plot, name=name, save=save, path=path)
 
 
 
