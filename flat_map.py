@@ -4,7 +4,8 @@ from headers import *
 
 class FlatMap(object):
    
-   def __init__(self, nX=256, nY=256, sizeX=5.*np.pi/180., sizeY=5.*np.pi/180., name="test"):
+   def __init__(self, nX=256, nY=256, sizeX=5.*np.pi/180.,
+         sizeY=5.*np.pi/180., name="test"):
       """n is number of pixels on one side
       size is the angular size of the side, in radians
       """
@@ -67,8 +68,8 @@ class FlatMap(object):
          path = "./output/lens_simulator/"+self.name+".fits"
       print("reading from "+path)
       hdulist = fits.open(path)
-      #
-      #self.name = hdulist[0].header['name']
+
+      self.name = hdulist[0].header['name']
       self.nX = hdulist[0].header['nX']
       self.sizeX = hdulist[0].header['sizeX']
       self.nY = hdulist[0].header['nY']
