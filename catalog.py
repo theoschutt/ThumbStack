@@ -1081,7 +1081,7 @@ class Catalog(object):
                print(("Object "+str(iObj)+" overlaps"))
              # fill the pixel
              countDirac[jY, jX] += 1.
-             velDirac[jY, jX] = - self.vR[iObj] / 3.e5   # v_r/c  [dimless]
+             velDirac[jY, jX] -= self.vR[iObj] / 3.e5   # v_r/c  [dimless]
              # check that I filled the right pixel
              if countDirac.at(sourcecoord, prefilter=False, mask_nan=False, order=0)!=1:
                 print("Filled the wrong pixel for  object", iObj)
