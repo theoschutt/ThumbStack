@@ -8,12 +8,18 @@ class ThumbStack(object):
 #   def __init__(self, U, Catalog, pathMap="", pathMask="", pathHit="", name="test", nameLong=None, save=False, nProc=1):
 # TODO: add minRad [default: 1], maxRad [default: 6], add nApertures [default: 9] arguments to avoid hardcoding them in
 # TODO: write docstring with argument descriptions etc
+   """
+
+   :param evenSignedWeights:        Whether to remove sources to ensure the same number
+                                    of positively and negatively weighted objects.
+                                    [default: False]
+   """
 
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
-                nameLong=None, save=False, nProc=1, filterTypes='diskring', estimatorTypes=['tsz_uniformweight'], doStackedMap=False,
+                nameLong=None, save=False, nProc=1, filterTypes='diskring',
+                estimatorTypes=['tsz_uniformweight'], evenSignedWeights=False, doStackedMap=False,
                 doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
                 cmbUnitLatex=r'$\mu$K', workDir='.', test=False, runEndToEnd=True):
-      
       self.nProc = nProc
       self.save = save
       self.U = U
@@ -27,6 +33,7 @@ class ThumbStack(object):
       self.cmbMap2 = cmbMap2
       self.cmbMask = cmbMask
       self.cmbHit = cmbHit
+      self.evenSignedWeights = evenSignedWeights
       self.doStackedMap = doStackedMap
       self.doMBins = doMBins
       self.doVShuffle = doVShuffle
@@ -94,10 +101,10 @@ class ThumbStack(object):
       # etc always get checked first. So not a big problem, but leaves
       # it up to the user not to mismatch estimator types and cov
       # estimator methods.
-      self.Est = weightTypes
-      self.EstBootstrap = weightTypes
-      self.EstVShuffle = weightTypes
-      self.EstMBins = weightTypes
+      self.Est = estimatorTypes
+      self.EstBootstrap = estimatorTypes
+      self.EstVShuffle = estimatorTypes
+      self.EstMBins = estimatorTypes
 
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
@@ -756,33 +763,38 @@ class ThumbStack(object):
 
 
    def catalogMask(self, overlap=True, psMask=True, mVir=None, z=[0., 100.], extraSelection=1.,
-                   filterType=None, outlierReject=True):
+                   filterType=None, outlierReject=True, test=False):
       '''Returns catalog mask: 1 for objects to keep, 0 for objects to discard.
       Use as:
       maskedQuantity = Quantity[mask]
       '''
       if mVir is None:
          mVir = [self.mMin, self.mMax]
-
+      # TODO: move print statements to test block or otherwise skip when performing bootstrap
       # Here mask is 1 for objects we want to keep
       mask = np.ones_like(self.Catalog.RA)
-      print("start with fraction", np.sum(mask)/len(mask), "of objects")
+      if test:
+          print("start with fraction", np.sum(mask)/len(mask), "of objects")
       if mVir is not None:
          mask *= (self.Catalog.Mvir>=mVir[0]) * (self.Catalog.Mvir<=mVir[1])
-         print("keeping fraction", np.sum(mask)/len(mask), "of objects after mass cut")
+         if test:
+             print("keeping fraction", np.sum(mask)/len(mask), "of objects after mass cut")
       if z is not None:
          mask *= (self.Catalog.Z>=z[0]) * (self.Catalog.Z<=z[1])
-         print("keeping fraction", np.sum(mask)/len(mask), "of objects after further z cut")
+         if test:
+             print("keeping fraction", np.sum(mask)/len(mask), "of objects after further z cut")
       if overlap:
          mask *= self.overlapFlag.copy()
-         print("keeping fraction", np.sum(mask)/len(mask), "of objects after further overlap cut")
+         if test:
+             print("keeping fraction", np.sum(mask)/len(mask), "of objects after further overlap cut")
       # PS mask: look at largest aperture, and remove if any point within the disk or ring is masked
       if psMask:
          # The point source mask may vary from one filterType to another
          if filterType is None:
             filterType = list(self.filtMask.keys())[0]
          mask *= 1.*(np.abs(self.filtMask[filterType][:,-1])<1.)
-         print("keeping fraction", np.sum(mask)/len(mask), "of objects after PS mask")
+         if test:
+             print("keeping fraction", np.sum(mask)/len(mask), "of objects after PS mask")
       mask *= extraSelection
       #print "keeping fraction", np.sum(mask)/len(mask), " of objects"
       if outlierReject:
@@ -810,10 +822,12 @@ class ThumbStack(object):
             newMask = (np.abs(self.filtMap[filterType][:,:]) <= nSigmasCut * sigmas[np.newaxis,:])
             # take the intersection of the masks
             mask *= np.prod(newMask, axis=1).astype(bool)
-            print("keeping fraction", np.sum(1.*mask)/len(mask), "of objects after further outlier cut")
+            if test:
+                print("keeping fraction", np.sum(1.*mask)/len(mask), "of objects after further outlier cut")
       # make sure the mask is boolean
       mask = mask.astype(bool)
-      print("keeping fraction", np.sum(1.*mask)/len(mask), "in the end")
+      if test:
+          print("keeping fraction", np.sum(1.*mask)/len(mask), "in the end")
       return mask
 
 
@@ -930,7 +944,7 @@ class ThumbStack(object):
       print("Measure mean T in z-bins (to subtract for kSZ)")
 
       # keep only objects that overlap, and mask point sources
-      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()))
+      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()), test=test)
 
       # redshift bins
       nZBins = 10
@@ -1007,8 +1021,8 @@ class ThumbStack(object):
       """
 
       #tStart = time()
-
-      print(("- Compute stacked profile: "+filterType+", "+est+", "+tTh))
+      if iBootstrap is None:
+         print(("- Compute stacked profile: "+filterType+", "+est+", "+tTh))
 
       # compute stacked profile from another thumbstack object
       if ts is None:
@@ -1018,7 +1032,7 @@ class ThumbStack(object):
 
       # select objects that overlap, and reject point sources
       if mask is None:
-         mask = ts.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=mVir, z=z)
+         mask = ts.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=mVir, z=z, test=test)
 
 #      tMean = ts.meanT[filterType].copy()
 
@@ -1172,6 +1186,27 @@ class ThumbStack(object):
       elif est=='tau_sgn_uniformweight':
          weights = -np.sign(Tlarge)
          norm = 1./np.sum(np.abs(Tlarge), axis=0)
+
+      # FIXME: the block below messes up the norm. Figure out how to update.
+      if evenSignedWeights:
+         # get the difference N_pos - N_neg
+         diff = np.sum(weights > 0) - np.sum(weights < 0)
+         if diff == 0:
+            pass # do nothing. The number of + and - weights are already equal
+         else:
+            # get the indices of the excess signed weights
+            if diff > 0:
+               idxExcess = np.where(weights > 0)[0]
+            else:
+               idxExcess = np.where(weights < 0)[0]
+            # randomly select N=diff samples of the excess signed weights
+            # TODO: We probably want this selection to be reproducible. How to pick seed?
+            #       Do we want the same samples removed for all bootstrap iterations?
+            rng = np.random.default_rng()
+            idxToRemove = rng.choice(idxExcess, np.abs(diff), replace=False)
+            # now set the weights of those randoms to zero so 
+            # they are effectively removed from the stack
+            weights[idxToRemove] = 0
 
       if test:
          print('Estimator:', est)
