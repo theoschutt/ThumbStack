@@ -10,14 +10,14 @@ class ThumbStack(object):
 # TODO: write docstring with argument descriptions etc
    """
 
-   :param evenSignedWeights:        Whether to remove sources to ensure the same number
+   :param equalSignedWeights:        Whether to remove sources to ensure the same number
                                     of positively and negatively weighted objects.
                                     [default: False]
    """
 
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
                 nameLong=None, save=False, nProc=1, filterTypes='diskring',
-                estimatorTypes=['tsz_uniformweight'], evenSignedWeights=False, doStackedMap=False,
+                estimatorTypes=['tsz_uniformweight'], equalSignedWeights=False, doStackedMap=False,
                 doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
                 cmbUnitLatex=r'$\mu$K', workDir='.', test=False, runEndToEnd=True):
       self.nProc = nProc
@@ -33,7 +33,7 @@ class ThumbStack(object):
       self.cmbMap2 = cmbMap2
       self.cmbMask = cmbMask
       self.cmbHit = cmbHit
-      self.evenSignedWeights = evenSignedWeights
+      self.equalSignedWeights = equalSignedWeights
       self.doStackedMap = doStackedMap
       self.doMBins = doMBins
       self.doVShuffle = doVShuffle
@@ -1187,18 +1187,28 @@ class ThumbStack(object):
          weights = -np.sign(Tlarge)
          norm = 1./np.sum(np.abs(Tlarge), axis=0)
 
-      # FIXME: the block below messes up the norm. Figure out how to update.
-      if evenSignedWeights:
-         # get the difference N_pos - N_neg
-         diff = np.sum(weights > 0) - np.sum(weights < 0)
+      if test:
+         print('Estimator:', est)
+         print('Weights:', weights)
+         print('Norm:', norm)
+         print('esw:', self.equalSignedWeights)
+
+      # equalize number of positively and negatively weighted sources
+      if (self.equalSignedWeights and est in
+          ['tau_ti_uniformweight', 'tau_sgn_uniformweight']):
+         # get the difference N_pos - N_neg.
+         # Some weights might be exactly zero, so count both explicitly.
+         # For tau estimators, weights for a stamp's apertures are all equal,
+         # so only use the first aperture's weight for counting.
+         diff = np.sum(weights[:,0] > 0) - np.sum(weights[:,0] < 0)
          if diff == 0:
             pass # do nothing. The number of + and - weights are already equal
          else:
             # get the indices of the excess signed weights
             if diff > 0:
-               idxExcess = np.where(weights > 0)[0]
+               idxExcess = np.where(weights[:,0] > 0)[0]
             else:
-               idxExcess = np.where(weights < 0)[0]
+               idxExcess = np.where(weights[:,0] < 0)[0]
             # randomly select N=diff samples of the excess signed weights
             # TODO: We probably want this selection to be reproducible. How to pick seed?
             #       Do we want the same samples removed for all bootstrap iterations?
@@ -1206,12 +1216,21 @@ class ThumbStack(object):
             idxToRemove = rng.choice(idxExcess, np.abs(diff), replace=False)
             # now set the weights of those randoms to zero so 
             # they are effectively removed from the stack
-            weights[idxToRemove] = 0
-
-      if test:
-         print('Estimator:', est)
-         print('Weights:', weights)
-         print('Norm:', norm)
+            weights[idxToRemove,:] = 0
+            # now update the norm
+            if est=='tau_ti_uniformweight':
+               norm = 1./np.sum(np.delete(Tlarge, idxToRemove, axis=0)**2, axis=0)
+            elif est=='tau_sgn_uniformweight':
+               norm = 1./np.sum(np.abs(np.delete(Tlarge, idxToRemove,
+                                                 axis=0)), axis=0)
+            if test:
+               print('equalSignedWeights \ndiff:', diff)
+               print('N_removed:', len(idxToRemove))
+               print('New weights:', weights)
+               print('New norm:', norm)
+      elif self.equalSignedWeights:
+         print(('WARNING: equalSignedWeights only valid for tau_*_uniformweight'
+                'estimators. Ignoring equalSignedWeights=True.'))
 
       #tStop = time()
       #print "stacked profile took", tStop-tStart, "sec"
