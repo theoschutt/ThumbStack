@@ -10,15 +10,19 @@ class ThumbStack(object):
 # TODO: write docstring with argument descriptions etc
    """
 
-   :param equalSignedWeights:        Whether to remove sources to ensure the same number
+   :param equalSignedWeights:       Whether to remove sources to ensure the same number
                                     of positively and negatively weighted objects.
                                     [default: False]
+   :param tLargeMin:                Minimum absolute value of temperature in uK for the
+                                    large scale temperature estimates (i.e. cmbMap2). Stamps
+                                    with |T_large| < tLargeMin receive a weight of 0.
+                                    [default: None]
    """
 
    def __init__(self, U, Catalog, cmbMap, cmbMask, cmbHit=None, cmbMap2=None, name="test",
                 nameLong=None, save=False, nProc=1, filterTypes='diskring',
-                estimatorTypes=['tsz_uniformweight'], equalSignedWeights=False, doStackedMap=False,
-                doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
+                estimatorTypes=['tsz_uniformweight'], equalSignedWeights=False, tLargeMin=None,
+                doStackedMap=False, doMBins=False, doVShuffle=False, doBootstrap=False, cmbNu=150.e9,
                 cmbUnitLatex=r'$\mu$K', workDir='.', test=False, runEndToEnd=True):
       self.nProc = nProc
       self.save = save
@@ -34,6 +38,7 @@ class ThumbStack(object):
       self.cmbMask = cmbMask
       self.cmbHit = cmbHit
       self.equalSignedWeights = equalSignedWeights
+      self.tLargeMin = tLargeMin
       self.doStackedMap = doStackedMap
       self.doMBins = doMBins
       self.doVShuffle = doVShuffle
@@ -1010,7 +1015,7 @@ class ThumbStack(object):
 
 
    def computeStackedProfile(self, filterType, est, iBootstrap=None, iVShuffle=None, tTh='',
-                             stackedMap=False, mVir=None, z=[0., 100.], ts=None, mask=None,
+                             tLargeMin=None, stackedMap=False, mVir=None, z=[0., 100.], ts=None, mask=None,
                              test=False):
       """Returns the estimated profile and its uncertainty for each aperture.
       est: string to select the estimator
@@ -1021,7 +1026,8 @@ class ThumbStack(object):
       """
 
       #tStart = time()
-      if iBootstrap is None:
+      # just print it once
+      if iBootstrap in [None, 0]:
          print(("- Compute stacked profile: "+filterType+", "+est+", "+tTh))
 
       # compute stacked profile from another thumbstack object
@@ -1192,6 +1198,13 @@ class ThumbStack(object):
          print('Weights:', weights)
          print('Norm:', norm)
          print('esw:', self.equalSignedWeights)
+
+      # apply minimum |T_large| cut
+      if self.tLargeMin is not None:
+         mask = np.abs(T_large) < self.tLargeMin
+         weights[mask] = 0
+         if test:
+             print('T_large cut:', np.sum(mask[:,0]))
 
       # equalize number of positively and negatively weighted sources
       if (self.equalSignedWeights and est in
