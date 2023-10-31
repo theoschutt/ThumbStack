@@ -527,7 +527,8 @@ class ThumbStack(object):
       # exact angular area of disk [sr]
       diskArea = np.sum(inDisk) * pixArea
       # ring filter [dimensionless]
-      inRing = 1.*(radius>r0)*(radius<=r1)
+      # equal goes with r0 to avoid leaving out central pixel (radius=0)
+      inRing = 1.*(radius>=r0)*(radius<r1)
       # exact angular area of ring [sr]
       ringArea = np.sum(inRing) * pixArea
 
