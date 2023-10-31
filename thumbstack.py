@@ -333,7 +333,7 @@ class ThumbStack(object):
          dec = self.Catalog.DEC[iObj]
          #hit = self.sky2map(ra, dec, self.cmbHit)
          hit = self.sky2map(ra, dec, self.cmbMask)
-         return np.float(hit>thresh)
+         return float(hit>thresh)
       
 #      overlapFlag = np.array(map(foverlap, range(self.Catalog.nObj)))
       tStart = time()
