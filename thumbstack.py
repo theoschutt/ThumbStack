@@ -1200,12 +1200,12 @@ class ThumbStack(object):
          print('Norm:', norm)
          print('esw:', self.equalSignedWeights)
 
-      # apply minimum |T_large| cut
+      # apply minimum |Tlarge| cut
       if self.tLargeMin is not None:
-         mask = np.abs(T_large) < self.tLargeMin
-         weights[mask] = 0
+         tmask = np.abs(Tlarge) < self.tLargeMin
+         weights[tmask] = 0
          if test:
-             print('T_large cut:', np.sum(mask[:,0]))
+             print('Tlarge cut:', np.sum(tmask[:,0]))
 
       # equalize number of positively and negatively weighted sources
       if (self.equalSignedWeights and est in
