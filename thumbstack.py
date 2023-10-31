@@ -52,6 +52,7 @@ class ThumbStack(object):
          'diskring',
          'disk',
          'ring',
+         'meanring',
          'cosdisk',
          'taudisk',
          'tauring',
@@ -106,11 +107,10 @@ class ThumbStack(object):
       # etc always get checked first. So not a big problem, but leaves
       # it up to the user not to mismatch estimator types and cov
       # estimator methods.
-      self.Est = estimatorTypes
-      self.EstBootstrap = estimatorTypes
-      self.EstVShuffle = estimatorTypes
-      self.EstMBins = estimatorTypes
-
+      self.Est = self.estimatorTypes
+      self.EstBootstrap = self.estimatorTypes
+      self.EstVShuffle = self.estimatorTypes
+      self.EstMBins = self.estimatorTypes
       # estimators (ksz, tsz) and weightings (uniform, hit, var, ...)
       # for stacked profiles, bootstrap cov and v-shuffle cov
       # TODO: make all this not hard-coded
