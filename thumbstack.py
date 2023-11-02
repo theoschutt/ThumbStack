@@ -204,7 +204,8 @@ class ThumbStack(object):
 
    def runEndToEnd(self, test):
       self.loadAPRadii()
-      self.loadMMaxBins(test=test)
+      if self.doMBins:
+          self.loadMMaxBins(test=test)
 
       if self.save:
          self.saveOverlapFlag(nProc=self.nProc)
@@ -213,11 +214,10 @@ class ThumbStack(object):
       if self.save:
          self.saveFiltering(nProc=self.nProc, test=test)
       self.loadFiltering()
-      
-      self.measureAllVarFromHitCount(plot=self.save)
-      
-#      self.measureAllMeanTZBins(plot=save, test=False)
 
+      self.measureAllVarFromHitCount(plot=self.save)
+
+#      self.measureAllMeanTZBins(plot=save, test=False)
 
       if self.save:
          self.saveAllStackedProfiles(test=test)
@@ -730,9 +730,9 @@ class ThumbStack(object):
       print("Evaluate all filters on all objects")
       # loop over all objects in catalog
       tStart = time()
-#       with sharedmem.MapReduce(np=nProc) as pool:
-#          f = lambda iObj: self.analyzeObject(iObj, test=False)
-#          result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
+#      with sharedmem.MapReduce(np=nProc) as pool:
+#         f = lambda iObj: self.analyzeObject(iObj, test=False)
+#         result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
       result = np.array([self.analyzeObject(iObj, test=test) for iObj in range(self.Catalog.nObj)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
@@ -769,7 +769,7 @@ class ThumbStack(object):
 
 
    def catalogMask(self, overlap=True, psMask=True, mVir=None, z=[0., 100.], extraSelection=1.,
-                   filterType=None, outlierReject=True, test=False):
+                   filterType=None, outlierReject=False, test=False):
       '''Returns catalog mask: 1 for objects to keep, 0 for objects to discard.
       Use as:
       maskedQuantity = Quantity[mask]
@@ -1215,6 +1215,7 @@ class ThumbStack(object):
          # For tau estimators, weights for a stamp's apertures are all equal,
          # so only use the first aperture's weight for counting.
          diff = np.sum(weights[:,0] > 0) - np.sum(weights[:,0] < 0)
+         # print('EqualSignedWeights diff:', diff)
          if diff == 0:
             pass # do nothing. The number of + and - weights are already equal
          else:
@@ -1258,7 +1259,6 @@ class ThumbStack(object):
              print('stack:', stack)
              print('sStack:', sStack)
          return stack, sStack
-
 
       # or, if requested, compute and return the stacked cutout map
       else:
@@ -1692,6 +1692,8 @@ class ThumbStack(object):
             # plot the stacked map and save it
             path = self.pathFig + "/stackedmap_"+filterType+"_"+est+".pdf"
             baseMap.plot(data=stackedMap, save=True, path=path)
+            path = self.pathFig + "/stackedmap_"+filterType+"_"+est+".png"
+            baseMap.plot(data=stackedMap, save=True, path=path)
             #lowBaseMap.plot(data=stackedMap, save=True, path=path)
 
 
@@ -1837,7 +1839,7 @@ class ThumbStack(object):
    ##################################################################################
 
    def plotStackedProfile(self, filterType, Est, name=None, pathDir=None, theory=True,
-                          tsArr=None, plot=True, legend=True):
+                          tsArr=None, plot=False, legend=True):
       """Compares stacked profiles, and their uncertainties.
       If pathDir is not specified, save to local figure folder.
       """
@@ -1879,6 +1881,8 @@ class ThumbStack(object):
       #ax.set_ylim((0., 2.))
       #
       path = pathDir+"/"+name+".pdf"
+      fig.savefig(path, bbox_inches='tight')
+      path = pathDir+"/"+name+".png"
       fig.savefig(path, bbox_inches='tight')
       if plot:
          plt.show()

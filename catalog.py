@@ -5,13 +5,20 @@ from headers import *
 
 class Catalog(object):
 
-   def __init__(self, U, MassConversion, name="test", nameLong=None, pathInCatalog="",
-                rV=1.,  save=False, workDir='.', nObj=None):
-      '''nObj: used to keep the first nObj objects of the catalog, useful for quick debugging
-      '''
+   '''
+   :param nObj:       used to keep the first nObj objects of the catalog, useful for
+                      quick debugging. [default: None]
 
+   :param cattype:    specifies type of input catalog text file. Available options are
+                      ['cmass', 'radec']. [default: 'cmass']
+   '''
+
+   def __init__(self, U, MassConversion, catType='cmass', name="test", nameLong=None, pathInCatalog="",
+                rV=1.,  save=False, workDir='.', nObj=None):
       self.U = U
       self.MassConversion = MassConversion
+      self.catType = catType
+      print(self.catType)
       self.name = name
       self.rV = rV   # velocity real-space correlation coefficient
       if nameLong is None:
@@ -95,6 +102,60 @@ class Catalog(object):
    ##################################################################################
 
    def readInputCatalog(self):
+      if self.catType == 'cmass':
+         self.loadCatalog()
+      elif self.catType == 'radec':
+         self.readRADecCatalog()
+      else:
+         raise ValueError('Invalid catType:', self.catType)
+
+   def readRADecCatalog(self):
+      print("- read input catalog from "+self.pathInCatalog)
+      data = np.genfromtxt(self.pathInCatalog)
+      self.nObj = len(data[:,0])
+
+      # sky coordinates
+      self.RA = data[:,0] # [deg]
+      self.DEC = data[:,1]   # [deg]
+
+      # !!WARNING!! Creates semi-plausible junk data columns to
+      # avoid causing errors everywhere
+      # mean and std values taken from subset of CMASS catalog
+      self.Z = np.random.normal(0.55, 0.06, self.nObj)
+      #
+      # observed cartesian coordinates
+      self.coordX = np.random.normal(-1260., 130., self.nObj) # [Mpc/h]
+      self.coordY = np.random.normal(-580., 85., self.nObj) # [Mpc/h]
+      self.coordZ = np.random.normal(375., 80., self.nObj) # [Mpc/h]
+      #
+      # displacement from difference,
+      # not including the Kaiser displacement,
+      # from differences of the observed and reconstructed fields
+      self.dX = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      self.dY = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      self.dZ = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      #
+      # Kaiser-only displacement
+      # originally from differences of the observed and reconstructed fields
+      self.dXKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h] from cartesian catalog difference
+      self.dYKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      self.dZKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      #
+      # velocity in cartesian coordinates
+      self.vX = np.random.normal(10., 170., self.nObj)  #[km/s]
+      self.vY = np.random.normal(-10., 170., self.nObj)  #[km/s]
+      self.vZ = np.random.normal(-10., 170., self.nObj)  #[km/s]
+      #
+      # velocity in spherical coordinates,
+      # from catalog of spherical displacements
+      self.vR = np.random.normal(0., 170., self.nObj)  # [km/s]   from spherical catalog, >0 away from us
+      self.vTheta = np.random.normal(-30., 150., self.nObj)   # [km/s]
+      self.vPhi = np.random.normal(-30., 150., self.nObj)  # [km/s]
+      #
+      # Stellar masses
+      self.Mstellar = np.random.uniform(8.e10, 5.e11, self.nObj)  # [M_sun], from Maraston et al
+
+   def readCMASSCatalog(self):
       print("- read input catalog from "+self.pathInCatalog)
       data = np.genfromtxt(self.pathInCatalog)
       self.nObj = len(data[:,0])
@@ -135,6 +196,7 @@ class Catalog(object):
       #
       # Stellar masses
       self.Mstellar = data[:,18]   # [M_sun], from Maraston et al
+
 
 
    ##################################################################################
