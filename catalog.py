@@ -1137,8 +1137,8 @@ class Catalog(object):
          if iX>=0 and iX<=(countDirac.shape[1]-1) and iY>=0 and iY<=(countDirac.shape[0]-1):
              # nearest pixel
              # watch out for difference round VS np.round!
-             jY = np.int(round(iY))
-             jX = np.int(round(iX))
+             jY = int(round(iY))
+             jX = int(round(iX))
              if test:
                print(("Object "+str(iObj)+" overlaps"))
              # fill the pixel
@@ -1150,8 +1150,8 @@ class Catalog(object):
                 print("wanted ra, dec=", ra, dec) # [deg]
                 print("chosen closest ra, dec=", posmap[::-1, jY, jX] * 180./np.pi)  # [deg]
                 print("difference in arcmin=", (posmap[::-1, jY, jX] * 180./np.pi - np.array([ra, dec]))*60.)  # residual in [arcmin]
-                print("ra index=", iX, jX, np.int(np.round(iX)), countDirac.shape[1])
-                print("dec index=", iY, jY, np.int(np.round(iY)), countDirac.shape[0])
+                print("ra index=", iX, jX, int(np.round(iX)), countDirac.shape[1])
+                print("dec index=", iY, jY, int(np.round(iY)), countDirac.shape[0])
 
              # normalize to integrate to 1 over angles in [muK*arcmin^2]
              countDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
