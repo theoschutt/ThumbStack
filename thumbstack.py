@@ -337,9 +337,11 @@ class ThumbStack(object):
       
 #      overlapFlag = np.array(map(foverlap, range(self.Catalog.nObj)))
       tStart = time()
-#       with sharedmem.MapReduce(np=nProc) as pool:
-#          overlapFlag = np.array(pool.map(foverlap, list(range(self.Catalog.nObj))))
-      overlapFlag = np.array([foverlap(iObj) for iObj in range(self.Catalog.nObj)])
+      if nProc > 1:
+         with sharedmem.MapReduce(np=nProc) as pool:
+            overlapFlag = np.array(pool.map(foverlap, list(range(self.Catalog.nObj))))
+      else:
+         overlapFlag = np.array([foverlap(iObj) for iObj in range(self.Catalog.nObj)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
 #       print(self.Catalog.RA[0])
@@ -730,10 +732,12 @@ class ThumbStack(object):
       print("Evaluate all filters on all objects")
       # loop over all objects in catalog
       tStart = time()
-#      with sharedmem.MapReduce(np=nProc) as pool:
-#         f = lambda iObj: self.analyzeObject(iObj, test=False)
-#         result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
-      result = np.array([self.analyzeObject(iObj, test=test) for iObj in range(self.Catalog.nObj)])
+      if nProc > 1:
+         with sharedmem.MapReduce(np=nProc) as pool:
+            f = lambda iObj: self.analyzeObject(iObj, test=False)
+            result = np.array(pool.map(f, list(range(self.Catalog.nObj))))
+      else:
+         result = np.array([self.analyzeObject(iObj, test=test) for iObj in range(self.Catalog.nObj)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
 
