@@ -52,8 +52,8 @@ class Catalog(object):
          self.addIntegratedDeflection()
          self.addIntegratedML()
          self.writeCatalog()
-
-      self.loadCatalog(nObj=nObj)
+      else:
+         self.loadCatalog(nObj=nObj)
    
 
    ##################################################################################
@@ -405,7 +405,7 @@ class Catalog(object):
 
    def loadCatalog(self, nObj=None):
       print("- load full catalog from "+self.pathOutCatalog)
-      data = np.genfromtxt(self.pathOutCatalog)
+      data = np.genfromtxt(self.pathOutCatalog, max_rows=nObj)
       self.nObj = len(data[:nObj,0])
       #
       # sky coordinates and redshift
