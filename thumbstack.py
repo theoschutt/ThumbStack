@@ -683,9 +683,13 @@ class ThumbStack(object):
          # Object coordinates
          ra = self.Catalog.RA[iObj]   # in deg
          dec = self.Catalog.DEC[iObj]   # in deg
-         z = self.Catalog.Z[iObj]
-         vTheta = self.Catalog.vTheta[iObj]   # [km/s]
-         vPhi = self.Catalog.vPhi[iObj]   # [km/s]
+         # z = self.Catalog.Z[iObj] # only gets used when doing apertures in comoving dist
+         if 'cosdisk' in self.filterTypes:
+            vTheta = self.Catalog.vTheta[iObj]   # [km/s]
+            vPhi = self.Catalog.vPhi[iObj]   # [km/s]
+         else:
+            vTheta = 0.
+            vPhi = 0. 
          # choose postage stamp size to fit the largest ring
          dArcmin = np.ceil(2. * self.rApMaxArcmin * np.sqrt(2.))
          dDeg = dArcmin / 60.
@@ -780,16 +784,15 @@ class ThumbStack(object):
       '''
       if mVir is None:
          mVir = [self.mMin, self.mMax]
-      # TODO: move print statements to test block or otherwise skip when performing bootstrap
       # Here mask is 1 for objects we want to keep
       mask = np.ones_like(self.Catalog.RA)
       if test:
           print("start with fraction", np.sum(mask)/len(mask), "of objects")
-      if mVir is not None:
+      if (self.Catalog.Mvir is not None):
          mask *= (self.Catalog.Mvir>=mVir[0]) * (self.Catalog.Mvir<=mVir[1])
          if test:
              print("keeping fraction", np.sum(mask)/len(mask), "of objects after mass cut")
-      if z is not None:
+      if (z is not None) and (self.Catalog.Z is not None):
          mask *= (self.Catalog.Z>=z[0]) * (self.Catalog.Z<=z[1])
          if test:
              print("keeping fraction", np.sum(mask)/len(mask), "of objects after further z cut")
@@ -854,7 +857,7 @@ class ThumbStack(object):
       """
       # keep only objects that overlap, and mask point sources
       mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType,
-                              mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()),
+                              # mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()), this isn't a cut...
                               outlierReject=False)
       # This array contains the true variances for each object and aperture 
       filtVarTrue = np.zeros((self.Catalog.nObj, self.nRAp))
@@ -954,7 +957,9 @@ class ThumbStack(object):
       print("Measure mean T in z-bins (to subtract for kSZ)")
 
       # keep only objects that overlap, and mask point sources
-      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType, mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()), test=test)
+      mask = self.catalogMask(overlap=True, psMask=True, filterType=filterType,
+			      # mVir=(self.Catalog.Mvir.min(), self.Catalog.Mvir.max()), this isn't a cut...
+                              test=test)
 
       # redshift bins
       nZBins = 10
@@ -1082,8 +1087,9 @@ class ThumbStack(object):
       t = t[mask, :]
  #     tMean = tMean[mask,:]
       # -v/c [dimless]
-      v = -ts.Catalog.vR[mask] / 3.e5
-      v -= np.mean(v)
+      if 'ksz' in est:
+          v = -ts.Catalog.vR[mask] / 3.e5
+          v -= np.mean(v)
 
 #      # expected sigma_{v_{true}}, for the normalization
 #      #print "computing v1d norm"
@@ -1101,12 +1107,14 @@ class ThumbStack(object):
       # valid whether or not a hit count map is available
       s2Full = ts.filtVarTrue[filterType][mask, :]
       # large-scale temperature for tau estimator
-      Tlarge = ts.filtHitNoiseStdDev[filterType][mask, :]
+      if 'tau' in est:
+         Tlarge = ts.filtHitNoiseStdDev[filterType][mask, :]
       # Variance from hit count (if available)
       s2Hit = ts.filtHitNoiseStdDev[filterType][mask, :]**2
       #print "Shape of s2Hit = ", s2Hit.shape
       # halo masses
-      m = ts.Catalog.Mvir[mask]
+      if 'mass' in est:
+         m = ts.Catalog.Mvir[mask]
 
       if test:
          print('T filtMap:', t)
@@ -1126,11 +1134,14 @@ class ThumbStack(object):
          #
          t = t[J,:]
          #tMean = tMean[J,:]
-         v = v[J]
+         if 'ksz' in est:
+            v = v[J]
          s2Hit = s2Hit[J,:]
          s2Full = s2Full[J,:]
-         Tlarge = Tlarge[J,:]
-         m = m[J]
+         if 'tau' in est:
+            Tlarge = Tlarge[J,:]
+         if 'mass' in est:
+            m = m[J]
 
       if iVShuffle is not None:
          # make sure each shuffling is independent,
@@ -1297,7 +1308,7 @@ class ThumbStack(object):
                   # Object coordinates
                   ra = ts.Catalog.RA[iObj]   # in deg
                   dec = ts.Catalog.DEC[iObj] # in deg
-                  z = ts.Catalog.Z[iObj]
+                  # z = ts.Catalog.Z[iObj]
                   # extract postage stamp around it
                   opos, stampMap, stampMask, stampHit, stampMap2= ts.extractStamp(ra, dec, test=False)
                   resMap += stampMap * weightsLong[iObj]
@@ -1723,13 +1734,15 @@ class ThumbStack(object):
             data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, test=test) # [map unit * sr]
             np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_measured.txt", data)
             # expected stacked profile from tSZ
-            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='tsz',
+            if 'tsz' in est:
+               data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='tsz',
                                                               test=test) # [map unit * sr]
-            np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_tsz.txt", data)
+               np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_tsz.txt", data)
             # expected stacked profile from kSZ
-            data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='ksz',
+            if 'ksz' in est:
+               data[:,1], data[:,2] = self.computeStackedProfile(filterType, est, tTh='ksz',
                                                               test=test) # [map unit * sr]
-            np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_ksz.txt", data)
+               np.savetxt(self.pathOut+"/"+filterType+"_"+est+"_theory_ksz.txt", data)
 
          # covariance matrices from bootstrap,
          # only for a few select estimators
@@ -1787,13 +1800,15 @@ class ThumbStack(object):
             self.stackedProfile[filterType+"_"+est] = data[:,1]
             self.sStackedProfile[filterType+"_"+est] = data[:,2]
             # expected stacked profile from tSZ
-            data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_theory_tsz.txt")
-            self.stackedProfile[filterType+"_"+est+"_theory_tsz"] = data[:,1]
-            self.sStackedProfile[filterType+"_"+est+"_theory_tsz"] = data[:,2]
+            if 'tsz' in est:
+               data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_theory_tsz.txt")
+               self.stackedProfile[filterType+"_"+est+"_theory_tsz"] = data[:,1]
+               self.sStackedProfile[filterType+"_"+est+"_theory_tsz"] = data[:,2]
             # expected stacked profile from kSZ
-            data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_theory_ksz.txt")
-            self.stackedProfile[filterType+"_"+est+"_theory_ksz"] = data[:,1]
-            self.sStackedProfile[filterType+"_"+est+"_theory_ksz"] = data[:,2]
+            if 'ksz' in est:
+               data = np.genfromtxt(self.pathOut+"/"+filterType+"_"+est+"_theory_ksz.txt")
+               self.stackedProfile[filterType+"_"+est+"_theory_ksz"] = data[:,1]
+               self.sStackedProfile[filterType+"_"+est+"_theory_ksz"] = data[:,2]
 
          # Null tests from shuffling velocities,
          # for ksz only
@@ -1874,8 +1889,10 @@ class ThumbStack(object):
 
             ax.errorbar(ts.RApArcmin+iTs*0.05, factor * ts.stackedProfile[filterType+"_"+est], factor * ts.sStackedProfile[filterType+"_"+est], fmt=ls, label=filterType.replace('_',' ')+' '+est.replace('_', ' ')+' '+ts.name.replace('_',' '))
             if theory:
-               ax.plot(ts.RApArcmin+iTs*0.05, factor * ts.stackedProfile[filterType+"_"+est+"_theory_tsz"], ls='--', label="theory tsz, "+filterType.replace('_',' ')+' '+est.replace('_', ' ')+' '+ts.name.replace('_',' '))
-               ax.plot(ts.RApArcmin+iTs*0.05, factor * ts.stackedProfile[filterType+"_"+est+"_theory_ksz"], ls='-.', label="theory ksz, "+filterType.replace('_',' ')+' '+est.replace('_', ' ')+' '+ts.name.replace('_',' '))
+               if 'tsz' in est:
+                  ax.plot(ts.RApArcmin+iTs*0.05, factor * ts.stackedProfile[filterType+"_"+est+"_theory_tsz"], ls='--', label="theory tsz, "+filterType.replace('_',' ')+' '+est.replace('_', ' ')+' '+ts.name.replace('_',' '))
+               if 'ksz' in est:
+                  ax.plot(ts.RApArcmin+iTs*0.05, factor * ts.stackedProfile[filterType+"_"+est+"_theory_ksz"], ls='-.', label="theory ksz, "+filterType.replace('_',' ')+' '+est.replace('_', ' ')+' '+ts.name.replace('_',' '))
       #
       if legend:
          ax.legend(loc=2, fontsize='x-small', labelspacing=0.1)

@@ -45,15 +45,9 @@ class Catalog(object):
       
       if save:
          self.readInputCatalog()
-         self.addHaloMass()
-         self.addIntegratedTau()
-         self.addIntegratedKSZ()
-         self.addIntegratedY()
-         self.addIntegratedDeflection()
-         self.addIntegratedML()
-         self.writeCatalog()
+         self.writeOutputCatalog()
       else:
-         self.loadCatalog(nObj=nObj)
+         self.loadSavedCatalog(nObj=nObj)
    
 
    ##################################################################################
@@ -111,49 +105,46 @@ class Catalog(object):
 
    def readRADecCatalog(self):
       print("- read input catalog from "+self.pathInCatalog)
-      data = np.genfromtxt(self.pathInCatalog)
+      data = np.loadtxt(self.pathInCatalog)
       self.nObj = len(data[:,0])
 
       # sky coordinates
       self.RA = data[:,0] # [deg]
       self.DEC = data[:,1]   # [deg]
 
-      # !!WARNING!! Creates semi-plausible junk data columns to
-      # avoid causing errors everywhere
-      # mean and std values taken from subset of CMASS catalog
-      self.Z = np.random.normal(0.55, 0.06, self.nObj)
+      self.Z = None
       #
       # observed cartesian coordinates
-      self.coordX = np.random.normal(-1260., 130., self.nObj) # [Mpc/h]
-      self.coordY = np.random.normal(-580., 85., self.nObj) # [Mpc/h]
-      self.coordZ = np.random.normal(375., 80., self.nObj) # [Mpc/h]
+      self.coordX = None 
+      self.coordY = None 
+      self.coordZ = None 
       #
       # displacement from difference,
       # not including the Kaiser displacement,
       # from differences of the observed and reconstructed fields
-      self.dX = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
-      self.dY = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
-      self.dZ = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      self.dX = None
+      self.dY = None
+      self.dZ = None
       #
       # Kaiser-only displacement
       # originally from differences of the observed and reconstructed fields
-      self.dXKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h] from cartesian catalog difference
-      self.dYKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
-      self.dZKaiser = np.random.normal(-0.7, 2.6, self.nObj)  # [Mpc/h]
+      self.dXKaiser = None
+      self.dYKaiser = None
+      self.dZKaiser = None
       #
       # velocity in cartesian coordinates
-      self.vX = np.random.normal(10., 170., self.nObj)  #[km/s]
-      self.vY = np.random.normal(-10., 170., self.nObj)  #[km/s]
-      self.vZ = np.random.normal(-10., 170., self.nObj)  #[km/s]
+      self.vX = None
+      self.vY = None
+      self.vZ = None
       #
       # velocity in spherical coordinates,
       # from catalog of spherical displacements
-      self.vR = np.random.normal(0., 170., self.nObj)  # [km/s]   from spherical catalog, >0 away from us
-      self.vTheta = np.random.normal(-30., 150., self.nObj)   # [km/s]
-      self.vPhi = np.random.normal(-30., 150., self.nObj)  # [km/s]
+      self.vR = None
+      self.vTheta = None
+      self.vPhi = None
       #
       # Stellar masses
-      self.Mstellar = np.random.uniform(8.e10, 5.e11, self.nObj)  # [M_sun], from Maraston et al
+      self.Mstellar = None
 
    def readCMASSCatalog(self):
       print("- read input catalog from "+self.pathInCatalog)
@@ -197,7 +188,13 @@ class Catalog(object):
       # Stellar masses
       self.Mstellar = data[:,18]   # [M_sun], from Maraston et al
 
-
+      self.addHaloMass()
+      self.addIntegratedTau()
+      self.addIntegratedKSZ()
+      self.addIntegratedY()
+      self.addIntegratedDeflection()
+      self.addIntegratedML()
+ 
 
    ##################################################################################
 
@@ -337,6 +334,24 @@ class Catalog(object):
 
    ##################################################################################
 
+   def writeOutputCatalog(self):
+      if self.catType == 'cmass':
+         self.writeCatalog()
+      elif self.catType == 'radec':
+         self.writeRADecCatalog()
+      else:
+         raise ValueError('Invalid catType:', self.catType)
+
+   def writeRADecCatalog(self):
+      print("- write full catalog to "+self.pathOutCatalog)
+      data = np.zeros((self.nObj,2))
+      #
+      # sky coordinates
+      data[:,0] = self.RA   # [deg]
+      data[:,1] = self.DEC    # [deg]
+ 
+      np.savetxt(self.pathOutCatalog, data)
+
    def writeCatalog(self):
       print("- write full catalog to "+self.pathOutCatalog)
       data = np.zeros((self.nObj,26))
@@ -402,6 +417,77 @@ class Catalog(object):
       #
       np.savetxt(self.pathOutCatalog, data)
 
+   def loadSavedCatalog(self, nObj=None):
+      if self.catType == 'cmass':
+         self.loadCatalog(nObj=nObj)
+      elif self.catType == 'radec':
+         self.loadRADecCatalog(nObj=nObj)
+      else:
+         raise ValueError('Invalid catType:', self.catType)
+
+   def loadRADecCatalog(self, nObj=None):
+      print("- load full catalog from "+self.pathOutCatalog)
+      data = np.loadtxt(self.pathOutCatalog, max_rows=nObj)
+      self.nObj = nObj
+      #
+      # sky coordinates and redshift
+      self.RA = data[:,0] # [deg]
+      self.DEC = data[:,1]   # [deg]
+      self.Z = None
+      #
+      # observed cartesian coordinates
+      self.coordX = None 
+      self.coordY = None 
+      self.coordZ = None 
+      #
+      # displacement from difference,
+      # not including the Kaiser displacement,
+      # from differences of the observed and reconstructed fields
+      self.dX = None
+      self.dY = None
+      self.dZ = None
+      #
+      # Kaiser-only displacement
+      # originally from differences of the observed and reconstructed fields
+      self.dXKaiser = None
+      self.dYKaiser = None
+      self.dZKaiser = None
+      #
+      # velocity in cartesian coordinates
+      self.vX = None
+      self.vY = None
+      self.vZ = None
+      #
+      # velocity in spherical coordinates,
+      # from catalog of spherical displacements
+      self.vR = None
+      self.vTheta = None
+      self.vPhi = None
+      #
+      # Stellar masses
+      self.Mstellar = None
+
+      # Halo mass
+      self.hasM = None
+      self.Mvir = None
+      #
+      # Integrated optical depth [sr]: int d^2theta n_e^2d sigma_T = (total nb of electrons) * sigma_T / (a chi)^2
+      self.integratedTau = None      
+      #
+      # Integrated kSZ signal [muK * sr]: int d^2theta n_e sigma_T (-v/c) Tcmb
+      self.integratedKSZ = None
+      #
+      # Integrated Y signal [sr]: int d^2theta n_e sigma_T (kB Te / me c^2)
+      # needs to be multiplied by Tcmb * f(nu) to get muK
+      self.integratedY = None
+      #
+      # Integrated lensing deflection over the halo: int d^2theta 16pi G rhoS Rs^2 f(r/r_s) / c^2
+      # the function f is essentially the radial profile of lensing deflection angle by the cluster
+      self.integratedDeflection = None
+      #
+      # Integrated ML signal [sr]: (v_transverse /c) * integratedDeflection
+      # To get dT in muK*sr, multiply by Tcmb
+      self.integratedML = None
 
    def loadCatalog(self, nObj=None):
       print("- load full catalog from "+self.pathOutCatalog)
@@ -1095,7 +1181,7 @@ class Catalog(object):
 
 
 
-   def generateMockMaps(self, carMap, sigma=None, test=False):
+   def generateMockMaps(self, carMap, sigma=None, make_vel_map=True, test=False):
       """Generate mock maps with 1 at the pixel location of each  object, 0 everywhere else.
       If sigma [arcmin] is specified, produces also Gaussian smoothed versions,
       normalized such that   int d^2theta profile = 1, where theta is in [rad].
@@ -1113,7 +1199,8 @@ class Catalog(object):
       # create empty maps
       countDirac = carMap.copy()
       countDirac[:,:] = 0.
-      velDirac = countDirac.copy()
+      if make_vel_map:
+         velDirac = countDirac.copy()
       # get map of exact pixel sizes
       pixSizeMap = countDirac.pixsizemap()
       # get map of ra and dec, just to check
@@ -1143,7 +1230,12 @@ class Catalog(object):
                print(("Object "+str(iObj)+" overlaps"))
              # fill the pixel
              countDirac[jY, jX] += 1.
-             velDirac[jY, jX] -= self.vR[iObj] / 3.e5   # v_r/c  [dimless]
+             # normalize to integrate to 1 over angles in [muK*arcmin^2]
+             countDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
+             if make_vel_map:
+                velDirac[jY, jX] -= self.vR[iObj] / 3.e5   # v_r/c  [dimless]
+                velDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
+ 
              # check that I filled the right pixel
              if countDirac.at(sourcecoord, prefilter=False, mask_nan=False, order=0)!=1:
                 print("Filled the wrong pixel for  object", iObj)
@@ -1153,10 +1245,6 @@ class Catalog(object):
                 print("ra index=", iX, jX, int(np.round(iX)), countDirac.shape[1])
                 print("dec index=", iY, jY, int(np.round(iY)), countDirac.shape[0])
 
-             # normalize to integrate to 1 over angles in [muK*arcmin^2]
-             countDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
-             velDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
-             
       # normalize the mock maps, such that:
       # int dOmega count = 1 [muK*arcmin^2]
       # int dOmega vel = -(v/c) / sigma(v/c) [muK*arcmin^2]
@@ -1167,57 +1255,65 @@ class Catalog(object):
       # and will be easily comparable to the theory curve.
 #      countDirac /= countDirac.pixsize() * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
 #      velDirac /= velDirac.pixsize() * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
-      velDirac /= np.std(self.vR / 3.e5)
+      if make_vel_map:
+         velDirac /= np.std(self.vR / 3.e5)
 
       # save the maps
       print("Saving maps to:")
       print(self.pathOut+"/mock_count_dirac_car.fits")
-      print(self.pathOut+"/mock_vel_dirac_car.fits")
       enmap.write_map(self.pathOut+"/mock_count_dirac_car.fits", countDirac)
-      enmap.write_map(self.pathOut+"/mock_vel_dirac_car.fits", velDirac)
-      
+      if make_vel_map:
+         print(self.pathOut+"/mock_vel_dirac_car.fits")
+         enmap.write_map(self.pathOut+"/mock_vel_dirac_car.fits", velDirac)
+
 
       # For the Gaussian profiles, use pixell.pointsrcs.sim_srcs,
       # which places the object at the exact position, rather than the center
       # of the closest pixel.
       if sigma is not None:
 
-
          # input for the counts
          srcsCount = np.zeros((self.nObj, 3))
          srcsCount[:,0] = self.DEC.copy() * np.pi/180.   # [rad]
          srcsCount[:,1] = self.RA.copy() * np.pi/180. # [rad]
          srcsCount[:,2] = 1.
-         # input for the LOS velocity
-         srcsVel = srcsCount.copy()
-         srcsVel[:,2] = - self.vR / 3.e5 
-
          import pointsrcs
 
          countGauss = pointsrcs.sim_srcs(carMap.shape, carMap.wcs, srcsCount, sigma*np.pi/(180.*60.))
-         velGauss = pointsrcs.sim_srcs(carMap.shape, carMap.wcs, srcsVel, sigma*np.pi/(180.*60.))
 #         # normalize to integrate to 1 over angles in [muK*arcmin^2]
 #         countGauss /= pixSizeMap * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
 #         velGauss /= pixSizeMap * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
          # The amplitude given to the Gaussian was the peak amplitude:
          # convert from peak amplitude to Gaussian normalization
          countGauss /= 2. * np.pi * sigma**2 # (sigma * np.pi / (180. * 60.))**2
-         velGauss /= 2. * np.pi * sigma**2   #(sigma * np.pi / (180. * 60.))**2
          # normalize the mock maps, such that:
          # int dOmega count = 1 [muK*arcmin^2]
-         # int dOmega vel = -(v/c) / sigma(v/c) [muK*arcmin^2]
-         # the reason for the vel normalization is that the kSZ estimator correlates with v/c,
-         # then divides by sigma^2(v/c), then re-multiplies by sigma(v/c),
-         # so that the estimated kSZ has the right amplitude.
-         # This way, the estimated tSZ and kSZ should converge to 1 muK*arcmin^2,
-         # and will be easily comparable to the theory curve.
-         velGauss /= np.std(self.vR / 3.e5)
          # save the maps
-         print("Saving maps to:")
+         print("Saving map to:")
          print(self.pathOut+"/mock_count_gauss_car.fits")
-         print(self.pathOut+"/mock_vel_gauss_car.fits")
          enmap.write_map(self.pathOut+"/mock_count_gauss_car.fits", countGauss)
-         enmap.write_map(self.pathOut+"/mock_vel_gauss_car.fits", velGauss)
+
+         if make_vel_map:
+            # input for the LOS velocity
+            srcsVel = srcsCount.copy()
+            srcsVel[:,2] = - self.vR / 3.e5
+   
+            velGauss = pointsrcs.sim_srcs(carMap.shape, carMap.wcs, srcsVel, sigma*np.pi/(180.*60.))
+   
+            # normalize to integrate to 1 over angles in [muK*arcmin^2]
+            velGauss /= 2. * np.pi * sigma**2   #(sigma * np.pi / (180. * 60.))**2
+            # normalize the mock maps, such that:
+            # int dOmega vel = -(v/c) / sigma(v/c) [muK*arcmin^2]
+            # the reason for the vel normalization is that the kSZ estimator correlates with v/c,
+            # then divides by sigma^2(v/c), then re-multiplies by sigma(v/c),
+            # so that the estimated kSZ has the right amplitude.
+            # This way, the estimated tSZ and kSZ should converge to 1 muK*arcmin^2,
+            # and will be easily comparable to the theory curve.
+            velGauss /= np.std(self.vR / 3.e5)
+            # save the maps
+            print("Saving map to:")
+            print(self.pathOut+"/mock_vel_gauss_car.fits")
+            enmap.write_map(self.pathOut+"/mock_vel_gauss_car.fits", velGauss)
 
       tStop = time()
       print(("Took "+str((tStop-tStart)/60.)+" min"))
