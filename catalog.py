@@ -102,6 +102,7 @@ class Catalog(object):
          self.readRADecCatalog()
       else:
          raise ValueError('Invalid catType:', self.catType)
+      print('Total catalog objects:', self.nObj)
 
    def readRADecCatalog(self):
       print("- read input catalog from "+self.pathInCatalog)
@@ -341,6 +342,7 @@ class Catalog(object):
          self.writeRADecCatalog()
       else:
          raise ValueError('Invalid catType:', self.catType)
+      print('Total catalog objects:', self.nObj)
 
    def writeRADecCatalog(self):
       print("- write full catalog to "+self.pathOutCatalog)
@@ -424,11 +426,12 @@ class Catalog(object):
          self.loadRADecCatalog(nObj=nObj)
       else:
          raise ValueError('Invalid catType:', self.catType)
+      print('Total catalog objects:', self.nObj)
 
    def loadRADecCatalog(self, nObj=None):
       print("- load full catalog from "+self.pathOutCatalog)
       data = np.loadtxt(self.pathOutCatalog, max_rows=nObj)
-      self.nObj = nObj
+      self.nObj = len(data[:,0]) 
       #
       # sky coordinates and redshift
       self.RA = data[:,0] # [deg]
