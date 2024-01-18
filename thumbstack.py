@@ -1242,7 +1242,9 @@ class ThumbStack(object):
             # randomly select N=diff samples of the excess signed weights
             # TODO: We probably want this selection to be reproducible. How to pick seed?
             #       Do we want the same samples removed for all bootstrap iterations?
-            rng = np.random.default_rng()
+            if iBootstrap is None:
+               iBootstrap = 8675309
+            rng = np.random.default_rng(iBootstrap)
             idxToRemove = rng.choice(idxExcess, np.abs(diff), replace=False)
             # now set the weights of those randoms to zero so 
             # they are effectively removed from the stack
