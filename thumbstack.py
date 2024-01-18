@@ -1317,9 +1317,11 @@ class ThumbStack(object):
             return resMap
 
          # dispatch each chunk of objects to a different processor
-         with sharedmem.MapReduce(np=ts.nProc) as pool:
-            resMap = np.array(pool.map(stackChunk, list(range(nChunk))))
-
+         if nProc > 1:
+            with sharedmem.MapReduce(np=ts.nProc) as pool:
+               resMap = np.array(pool.map(stackChunk, list(range(nChunk))))
+         else:
+            resMap = np.array([stackChunk(iChunk) for iChunk in range(nChunk)]) 
          # sum all the chunks
          resMap = np.sum(resMap, axis=0)
          # normalize by the proper sum of weights
@@ -1561,10 +1563,13 @@ class ThumbStack(object):
       if mVir is None:
          mVir = [self.mMin, self.mMax]
       tStart = time()
-      with sharedmem.MapReduce(np=nProc) as pool:
-         f = lambda iSample: self.computeStackedProfile(filterType, est, iBootstrap=iSample, mVir=mVir, z=z)
-         result = np.array(pool.map(f, list(range(nSamples))))
-         #result = np.array(map(f, range(nSamples)))
+      if nProc > 1:
+         with sharedmem.MapReduce(np=nProc) as pool:
+            f = lambda iSample: self.computeStackedProfile(filterType, est, iBootstrap=iSample, mVir=mVir, z=z)
+            result = np.array(pool.map(f, list(range(nSamples))))
+      else:
+         result = np.array([self.computeStackedProfile(filterType, est, iBootstrap=iSample, mVir=mVir, z=z)
+            for iSample in range(nSamples)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
       # unpack results
@@ -1614,10 +1619,12 @@ class ThumbStack(object):
          # concatenate the 2 profiles
          jointProf = np.concatenate((prof1[0], prof2[0]))
          return jointProf
-         
-      with sharedmem.MapReduce(np=nProc) as pool:
-         stackSamples = np.array(pool.map(f, list(range(nSamples))))
-         #result = np.array(map(f, range(nSamples)))
+
+      if nProc > 1:   
+         with sharedmem.MapReduce(np=nProc) as pool:
+            stackSamples = np.array(pool.map(f, list(range(nSamples))))
+      else:
+         result = np.array(map(f, range(nSamples)))
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
       # estimate cov
@@ -1651,9 +1658,13 @@ class ThumbStack(object):
       if mVir is None:
          mVir = [self.mMin, self.mMax]
       tStart = time()
-      with sharedmem.MapReduce(np=nProc) as pool:
-         f = lambda iSample: self.computeStackedProfile(filterType, est, iVShuffle=iSample, mVir=mVir, z=z)
-         result = np.array(pool.map(f, list(range(nSamples))))
+      if nProc > 1:
+         with sharedmem.MapReduce(np=nProc) as pool:
+            f = lambda iSample: self.computeStackedProfile(filterType, est, iVShuffle=iSample, mVir=mVir, z=z)
+            result = np.array(pool.map(f, list(range(nSamples))))
+      else:
+         result = np.array([self.computeStackedProfile(filterType, est, iVShuffle=iSample, mVir=mVir, z=z)
+            for iSample in range(nSamples)])
       tStop = time()
       print("took", (tStop-tStart)/60., "min")
       # unpack results
