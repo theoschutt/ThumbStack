@@ -2500,8 +2500,10 @@ class ThumbStack(object):
          for filterType in self.filterTypes:
             for est in self.EstBootstrap:
                self.computeSnrStack(filterType, est)
-               self.computeSnrStack(filterType, est, tTh='tsz')
-               self.computeSnrStack(filterType, est, tTh='ksz')
+               if 'tsz' in est:
+                  self.computeSnrStack(filterType, est, tTh='tsz')
+               if 'ksz' in est:
+                  self.computeSnrStack(filterType, est, tTh='ksz')
 
 
 
