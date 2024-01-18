@@ -67,7 +67,7 @@ def intExpForm(input):
    clean scientific notation for file names
    removes trailing decimal point if not needed
    """
-   a = '%e' % np.float(input)
+   a = '%e' % float(input)
    # mantissa: remove trailing zeros
    # then remove dot if no decimal digits
    mantissa = a.split('e')[0].rstrip('0').rstrip('.')
@@ -83,7 +83,7 @@ def intExpForm(input):
 def floatExpForm(input):
    """same as intExpForm, except always leaves the decimal point
    """
-   a = '%e' % np.float(input)
+   a = '%e' % float(input)
    # mantissa: remove trailing zeros
    # then remove dot if no decimal digits
    mantissa = a.split('e')[0].rstrip('0')

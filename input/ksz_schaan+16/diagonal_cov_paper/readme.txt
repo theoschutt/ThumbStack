@@ -1,0 +1,1 @@
+These files contain the data points in Fig 1 of the kSZ measurement in Schaan Ferraro+16.

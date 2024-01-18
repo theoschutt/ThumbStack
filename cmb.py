@@ -40,7 +40,7 @@ class CMB(object):
       self.funlensedTT_template = UnivariateSpline(data[:,0], data[:,1],k=1,s=0)
       lmin_unlensedCMB = data[0,0]
       lmax_unlensedCMB = data[-1,0]
-      self.funlensedTT = lambda l: (l>=lmin_unlensedCMB and l<=lmax_unlensedCMB) * self.funlensedTT_template(l) * self.fdl_to_cl(l)
+      self.funlensedTT = lambda l: ((l>=lmin_unlensedCMB) & (l<=lmax_unlensedCMB)) * self.funlensedTT_template(l) * self.fdl_to_cl(l)
       
       # unlensed EE
       data = np.genfromtxt(
@@ -48,7 +48,7 @@ class CMB(object):
       self.funlensedEE_template = UnivariateSpline(data[:,0], data[:,2],k=1,s=0)
       lmin_unlensedEE = data[0,0]
       lmax_unlensedEE = data[-1,0]
-      self.funlensedEE = lambda l: (l>=lmin_unlensedEE and l<=lmax_unlensedEE) * self.funlensedEE_template(l) * self.fdl_to_cl(l)
+      self.funlensedEE = lambda l: ((l>=lmin_unlensedEE) & (l<=lmax_unlensedEE)) * self.funlensedEE_template(l) * self.fdl_to_cl(l)
       
       # unlensed BB
       data = np.genfromtxt(
@@ -56,7 +56,7 @@ class CMB(object):
       self.funlensedBB_template = UnivariateSpline(data[:,0], data[:,3],k=1,s=0)
       lmin_unlensedBB = data[0,0]
       lmax_unlensedBB = data[-1,0]
-      self.funlensedBB = lambda l: (l>=lmin_unlensedBB and l<=lmax_unlensedBB) * self.funlensedBB_template(l) * self.fdl_to_cl(l)
+      self.funlensedBB = lambda l: ((l>=lmin_unlensedBB) & (l<=lmax_unlensedBB)) * self.funlensedBB_template(l) * self.fdl_to_cl(l)
       
       # unlensed TE
       data = np.genfromtxt(
@@ -64,7 +64,7 @@ class CMB(object):
       self.funlensedTE_template = UnivariateSpline(data[:,0], data[:,4],k=1,s=0)
       lmin_unlensedTE = data[0,0]
       lmax_unlensedTE = data[-1,0]
-      self.funlensedTE = lambda l: (l>=lmin_unlensedTE and l<=lmax_unlensedTE) * self.funlensedTE_template(l) * self.fdl_to_cl(l)
+      self.funlensedTE = lambda l: ((l>=lmin_unlensedTE) & (l<=lmax_unlensedTE)) * self.funlensedTE_template(l) * self.fdl_to_cl(l)
       
       
       ###########################################
@@ -76,7 +76,7 @@ class CMB(object):
       self.flensedTT_template = UnivariateSpline(data[:,0], data[:,1],k=1,s=0)
       lmin_lensedCMB = data[0,0]
       lmax_lensedCMB = data[-1,0]
-      self.flensedTT = lambda l: (l>=lmin_lensedCMB and l<=lmax_lensedCMB) * self.flensedTT_template(l) * self.fdl_to_cl(l)
+      self.flensedTT = lambda l: ((l>=lmin_lensedCMB) & (l<=lmax_lensedCMB)) * self.flensedTT_template(l) * self.fdl_to_cl(l)
 
       # lensed EE
       data = np.genfromtxt(
@@ -84,7 +84,7 @@ class CMB(object):
       self.flensedEE_template = UnivariateSpline(data[:,0], data[:,2],k=1,s=0)
       lmin_lensedEE = data[0,0]
       lmax_lensedEE = data[-1,0]
-      self.flensedEE = lambda l: (l>=lmin_lensedEE and l<=lmax_lensedEE) * self.flensedEE_template(l) * self.fdl_to_cl(l)
+      self.flensedEE = lambda l: ((l>=lmin_lensedEE) & (l<=lmax_lensedEE)) * self.flensedEE_template(l) * self.fdl_to_cl(l)
 
       # lensed BB
       data = np.genfromtxt(
@@ -92,7 +92,7 @@ class CMB(object):
       self.flensedBB_template = UnivariateSpline(data[:,0], data[:,3],k=1,s=0)
       lmin_lensedBB = data[0,0]
       lmax_lensedBB = data[-1,0]
-      self.flensedBB = lambda l: (l>=lmin_lensedBB and l<=lmax_lensedBB) * self.flensedBB_template(l) * self.fdl_to_cl(l)
+      self.flensedBB = lambda l: ((l>=lmin_lensedBB) & (l<=lmax_lensedBB)) * self.flensedBB_template(l) * self.fdl_to_cl(l)
 
       # lensed TE
       data = np.genfromtxt(
@@ -100,7 +100,7 @@ class CMB(object):
       self.flensedTE_template = UnivariateSpline(data[:,0], data[:,4],k=1,s=0)
       lmin_lensedTE = data[0,0]
       lmax_lensedTE = data[-1,0]
-      self.flensedTE = lambda l: (l>=lmin_lensedTE and l<=lmax_lensedTE) * self.flensedTE_template(l) * self.fdl_to_cl(l)
+      self.flensedTE = lambda l: ((l>=lmin_lensedTE) & (l<=lmax_lensedTE)) * self.flensedTE_template(l) * self.fdl_to_cl(l)
 
       ###########################################
       # total primary T, E, B, w/o foregrounds: lensed + noise
@@ -120,7 +120,7 @@ class CMB(object):
       a_tSZ = 4.0
       lmin_tSZ = data[0,0]
       lmax_tSZ = data[-1,0]
-      self.ftSZ = lambda l: (l>=lmin_tSZ and l<=lmax_tSZ) * a_tSZ * self.freqDpdceTSZTemp(self.nu1)*self.freqDpdceTSZTemp(self.nu2)/self.freqDpdceTSZTemp(150.e9)**2 * ftSZ_template(l) * self.fdl_to_cl(l)
+      self.ftSZ = lambda l: ((l>=lmin_tSZ) & (l<=lmax_tSZ)) * a_tSZ * self.freqDpdceTSZTemp(self.nu1)*self.freqDpdceTSZTemp(self.nu2)/self.freqDpdceTSZTemp(150.e9)**2 * ftSZ_template(l) * self.fdl_to_cl(l)
 
       # kSZ: Dunkley et al 2013
       data = np.genfromtxt(
@@ -129,7 +129,7 @@ class CMB(object):
       a_kSZ = 1.5  # 1.5 predicted by Battaglia et al 2010. Upper limit from Dunkley+13 is 5.
       lmin_kSZ = data[0,0]
       lmax_kSZ = data[-1,0]
-      self.fkSZ = lambda l: (l>=lmin_kSZ and l<=lmax_kSZ) * a_kSZ * fkSZ_template(l) * self.fdl_to_cl(l)
+      self.fkSZ = lambda l: ((l>=lmin_kSZ) & (l<=lmax_kSZ)) * a_kSZ * fkSZ_template(l) * self.fdl_to_cl(l)
    
       # tSZ x CMB: Dunkley et al 2013
       xi = 0.2 # upper limit at 95% confidence
@@ -143,7 +143,7 @@ class CMB(object):
       ftSZCIB_template = UnivariateSpline(data[:,0], data[:,1],k=1,s=0)
       lmin_tSZ_CIB = data[0,0]
       lmax_tSZ_CIB = data[-1,0]
-      self.ftSZ_CIB = lambda l: (l>=lmin_tSZ_CIB and l<=lmax_tSZ_CIB) * (-2.)*xi*np.sqrt(a_tSZ*a_CIBC)* self.fprime(self.nu1, self.nu2, betaC, Td)/self.fprime(150.e9, 150.e9, betaC, Td) * ftSZCIB_template(l) * self.fdl_to_cl(l)
+      self.ftSZ_CIB = lambda l: ((l>=lmin_tSZ_CIB) & (l<=lmax_tSZ_CIB)) * (-2.)*xi*np.sqrt(a_tSZ*a_CIBC)* self.fprime(self.nu1, self.nu2, betaC, Td)/self.fprime(150.e9, 150.e9, betaC, Td) * ftSZCIB_template(l) * self.fdl_to_cl(l)
 
 
    ###############################################################################
