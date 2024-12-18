@@ -1230,14 +1230,11 @@ class Catalog(object):
              jY = int(round(iY))
              jX = int(round(iX))
              if test:
-               print(("Object "+str(iObj)+" overlaps"))
+                print(("Object "+str(iObj)+" overlaps"))
              # fill the pixel
-             countDirac[jY, jX] += 1.
-             # normalize to integrate to 1 over angles in [muK*arcmin^2]
-             countDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
+             countDirac[jY, jX] += 1. / pixSizeMap[jY, jX] / (180.*60./np.pi)**2 # [arcmin^-2]
              if make_vel_map:
-                velDirac[jY, jX] -= self.vR[iObj] / 3.e5   # v_r/c  [dimless]
-                velDirac[jY, jX] /= pixSizeMap[jY, jX] * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
+                velDirac[jY, jX] -= self.vR[iObj] / 3.e5 / pixSizeMap[jY, jX] / (180.*60./np.pi)**2 # [arcmin^-2]
  
              # check that I filled the right pixel
              if countDirac.at(sourcecoord, prefilter=False, mask_nan=False, order=0)!=1:
@@ -1256,8 +1253,6 @@ class Catalog(object):
       # so that the estimated kSZ has the right amplitude.
       # This way, the estimated tSZ and kSZ should converge to 1 muK*arcmin^2,
       # and will be easily comparable to the theory curve.
-#      countDirac /= countDirac.pixsize() * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
-#      velDirac /= velDirac.pixsize() * (180.*60./np.pi)**2 # divide by pixel area in arcmin^2 
       if make_vel_map:
          velDirac /= np.std(self.vR / 3.e5)
 
